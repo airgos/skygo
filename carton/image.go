@@ -2,41 +2,32 @@ package carton
 
 import (
 	"boxgo/runbook"
-	"fmt"
-	"strings"
+	"runtime"
 )
 
 // Image inherits Carton
 type Image struct {
-	Name string
-	Desc string
 	Type string
 	Carton
 }
 
-// Provider return what's provided
-func (e *Image) Provider() string {
-	return e.Name
-}
+func (e *Image) String() string { return e.Carton.String() }
 
-func (e *Image) String() string {
+// NewImage create a image carton and add to inventory
+func NewImage(name string, m func(i *Image)) {
 
-	var b strings.Builder
+	i := new(Image)
+	i.name = name
+	_, file, _, _ := runtime.Caller(1)
 
-	if e.Desc != "" {
+	// inherits i.Carton.Init
+	i.Init(file, i, func(arg Modifier) {
 
-		fmt.Fprintf(&b, "%s\n", e.Desc)
-	}
-	fmt.Fprintf(&b, "%s\n", e.Carton.String())
-	return b.String()
-}
-
-// InstallRunbook install default runbook
-func (e *Image) InstallRunbook() {
-
-	chain := runbook.NewRunbook(e)
-	chain.PushFront(PREPARE).
-		InsertAfter(BUILD).
-		InsertAfter(INSTALL)
-	e.runbook = chain
+		rb := runbook.NewRunbook(i)
+		rb.PushFront(PREPARE).
+			InsertAfter(BUILD).
+			InsertAfter(INSTALL)
+		i.runbook = rb
+		m(i)
+	})
 }

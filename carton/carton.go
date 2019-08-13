@@ -1,7 +1,4 @@
-// Package carton implements ...
-
-// Dependency Format: carton-name[@procedure]
-
+// Package carton implements interface Builder and Modifier
 package carton
 
 import (
@@ -10,11 +7,10 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
-	"sync"
-	"sync/atomic"
 
 	"boxgo/config"
 	"boxgo/fetch"
@@ -41,10 +37,11 @@ const (
 // The Carton represents the state of carton
 // It implements interface Builder and Modifier
 type Carton struct {
-	Name     string
-	provider []string
 	Desc     string // oneline description
 	Homepage string // home page
+
+	name     string
+	provider []string
 
 	stdout, stderr io.Writer
 
@@ -62,50 +59,48 @@ type Carton struct {
 	environ map[string]string
 
 	runbook *runbook.Runbook
-
-	m      sync.Mutex
-	inited uint32
 }
 
-// Init must make sure Carton is inited only once time
-// file: which file provide this carton
-func (c *Carton) Init() {
+// NewCarton create a carton and add to inventory
+func NewCarton(name string, m func(c *Carton)) {
 
-	if atomic.LoadUint32(&c.inited) == 1 {
-		return
-	}
+	c := new(Carton)
+	c.name = name
+	_, file, _, _ := runtime.Caller(1)
 
-	c.m.Lock()
-	defer c.m.Unlock()
-	if c.inited == 0 {
-		defer atomic.StoreUint32(&c.inited, 1)
+	c.Init(file, c, func(arg Modifier) {
 
+		chain := runbook.NewRunbook(c)
+		p, _ := chain.PushFront(FETCH).AddTask(0, func() error {
+			return fetchExtract(c)
+		})
+		p, _ = p.InsertAfter(PATCH).AddTask(0, func() error {
+			return patch(c)
+		})
+		p.InsertAfter(PREPARE).InsertAfter(BUILD).InsertAfter(INSTALL)
+		c.runbook = chain
+
+		m(c)
+	})
+}
+
+// Init initialize carton and add to inventory
+// install runbook in callback modify
+func (c *Carton) Init(file string, arg Modifier, modify func(arg Modifier)) {
+
+	add(c, file, func() {
 		c.provider = []string{}
 		c.environ = make(map[string]string)
-		if c.Name != "" {
-			c.provider = append(c.provider, c.Name)
-			c.environ["PN"] = c.Name
-		}
+		c.resouce = make(map[string][]fetch.SrcURL)
 
 		c.file = []string{}
 		c.filepath = []string{}
 
-		c.resouce = make(map[string][]fetch.SrcURL)
-	}
-}
+		c.provider = append(c.provider, c.name)
+		c.environ["PN"] = c.name
 
-// InstallRunbook install default runbook
-func (c *Carton) InstallRunbook() {
-
-	chain := runbook.NewRunbook(c)
-	p, _ := chain.PushFront(FETCH).AddTask(0, func() error {
-		return fetchExtract(c)
+		modify(arg)
 	})
-	p, _ = p.InsertAfter(PATCH).AddTask(0, func() error {
-		return patch(c)
-	})
-	p.InsertAfter(PREPARE).InsertAfter(BUILD).InsertAfter(INSTALL)
-	c.runbook = chain
 }
 
 // Output return io.Writer Stdout, Stderr
@@ -121,7 +116,7 @@ func (c *Carton) SetOutput(stdout, stderr io.Writer) {
 
 // Provider return what's provided
 func (c *Carton) Provider() string {
-	return c.Name
+	return c.name
 }
 
 // From add new location indicating which file provide carton
@@ -409,9 +404,11 @@ func (c *Carton) String() string {
 	}
 
 	// where come from
-	fmt.Fprintf(&b, "From: %s\n", c.file[0])
-	for _, file := range c.file[1:] {
-		fmt.Fprintf(&b, "      %s\n", file)
+	if len(c.file) > 0 {
+		fmt.Fprintf(&b, "From: %s\n", c.file[0])
+		for _, file := range c.file[1:] {
+			fmt.Fprintf(&b, "      %s\n", file)
+		}
 	}
 
 	return b.String()

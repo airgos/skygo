@@ -3,7 +3,6 @@ package carton
 import (
 	"fmt"
 	"runtime"
-	"strings"
 	"sync"
 )
 
@@ -16,20 +15,12 @@ var updateCh = make(chan func())
 
 var updateNum int
 
-// Add add carton handler to inventory
-// Generally, it's invoked by init function in carton description file
-func Add(carton Builder, f func()) {
+// add carton to inventory
+func add(carton Builder, file string, f func()) {
 
 	name := carton.Provider()
 	if name == "" {
 		panic(fmt.Sprintf("Carton Err:", ErrNoName))
-	}
-
-	pc, file, _, _ := runtime.Caller(1)
-	details := runtime.FuncForPC(pc)
-	if !strings.Contains(details.Name(), ".init.") {
-
-		panic(fmt.Errorf("%s: must add carton in init func", file))
 	}
 
 	if _, ok := inventory[name]; ok {
@@ -40,14 +31,10 @@ func Add(carton Builder, f func()) {
 	// run in goroutine to improve user experience
 	go func() {
 		initCh <- func() {
-			if init, ok := carton.(Initer); ok {
-				init.Init()
-				init.InstallRunbook()
-			}
-			carton.From(file)
 			if f != nil {
 				f()
 			}
+			carton.From(file)
 		}
 	}()
 }

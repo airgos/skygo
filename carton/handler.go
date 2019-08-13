@@ -10,12 +10,6 @@ import (
 	"boxgo/runbook"
 )
 
-// Initer xx
-type Initer interface {
-	Init()
-	InstallRunbook()
-}
-
 // Modifier is the interface to help modify carton
 type Modifier interface {
 	AddFilePath(dir string) error
