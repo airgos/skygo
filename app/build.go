@@ -31,10 +31,11 @@ func (b *build) Run(args ...string) error {
 	carton.BuildInventory()
 	c, _ := carton.Find(args[0])
 	c.SetOutput(os.Stdout, os.Stderr)
+	rb := c.Runbook()
 	if b.Exec != "" {
-		return c.Play(b.Exec)
+		return rb.Play(b.Exec)
 	} else if b.NoDeps {
-		return c.Perform()
+		return rb.Perform()
 	}
 
 	return nil

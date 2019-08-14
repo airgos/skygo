@@ -39,6 +39,7 @@ const (
 type Carton struct {
 	Desc     string // oneline description
 	Homepage string // home page
+	RunBook  *runbook.Runbook
 
 	name     string
 	provider []string
@@ -57,8 +58,6 @@ type Carton struct {
 
 	// environment variables who are exported to cartion running space by format key=value
 	environ map[string]string
-
-	runbook *runbook.Runbook
 }
 
 // NewCarton create a carton and add to inventory
@@ -78,7 +77,7 @@ func NewCarton(name string, m func(c *Carton)) {
 			return patch(c)
 		})
 		p.InsertAfter(PREPARE).InsertAfter(BUILD).InsertAfter(INSTALL)
-		c.runbook = chain
+		c.RunBook = chain
 
 		m(c)
 	})
@@ -322,48 +321,9 @@ func (c *Carton) WorkPath() string {
 	return dir
 }
 
-// CloneRunbook clone runbook with different runtime
-func (c *Carton) CloneRunbook(r runbook.Runtime) *runbook.Runbook {
-	return c.runbook.Clone(r)
-}
-
-// Perform carry out all stages owned
-// Break if any stage failed
-func (c *Carton) Perform() error {
-	return c.runbook.Perform()
-}
-
-// Play run stage's task or independent task
-func (c *Carton) Play(name string) error {
-	if s := c.runbook.Stage(name); s != nil {
-		if e := s.Play(); e != nil {
-			return e
-		}
-	}
-	return c.runbook.RunTask(name)
-}
-
-// Stage get stage from the runbook
-func (c *Carton) Stage(name string) *runbook.Stage {
-	return c.runbook.Stage(name)
-}
-
-// RunbookInfo give stage slice with the number of task, independent task names
-func (c *Carton) RunbookInfo() ([]string, []int, []string) {
-	return c.runbook.RunbookInfo()
-}
-
-// AddJob collects routine/function from @name, map to stage with the same
-// routine name, then add task with weight 0 to runbook
-// name: either raw string or file name under WorkPath
-// if not match, add to independent task
-func (c *Carton) AddJob(name string) {
-	// TODO: implement
-}
-
-// TaskSet get independent TaskSet with each other
-func (c *Carton) TaskSet() *runbook.TaskSet {
-	return c.runbook.TaskSet()
+// Runbook return runbook hold by Carton
+func (c *Carton) Runbook() *runbook.Runbook {
+	return c.RunBook
 }
 
 // Environ returns a copy of strings representing the environment,

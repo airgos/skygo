@@ -142,6 +142,16 @@ func (rb *Runbook) Perform() error {
 	return nil
 }
 
+// Play run stage's tasks or the independent task
+func (rb *Runbook) Play(name string) error {
+	if s := rb.Stage(name); s != nil {
+		if e := s.Play(); e != nil {
+			return e
+		}
+	}
+	return rb.RunTask(name)
+}
+
 func newStage(name string, runtime Runtime) *Stage {
 
 	stage := Stage{

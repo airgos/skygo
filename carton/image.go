@@ -27,7 +27,7 @@ func NewImage(name string, m func(i *Image)) {
 		rb.PushFront(PREPARE).
 			InsertAfter(BUILD).
 			InsertAfter(INSTALL)
-		i.runbook = rb
+		i.RunBook = rb
 		m(i)
 	})
 }

@@ -17,37 +17,19 @@ type link struct {
 	h       Builder
 }
 
-func (l *link) Provider() string                              { return l.h.Provider() }
-func (l *link) Versions() []string                            { return l.h.Versions() }
-func (l *link) From(file ...string) []string                  { return l.h.From(file...) }
-func (l *link) SrcPath() string                               { return l.h.SrcPath() }
-func (l *link) WorkPath() string                              { return l.h.WorkPath() }
-func (l *link) FilePath() []string                            { return l.h.FilePath() }
-func (l *link) BuildDepends(dep ...string) []string           { return l.h.BuildDepends() }
-func (l *link) Depends(dep ...string) []string                { return l.h.Depends() }
-func (l *link) RunbookInfo() ([]string, []int, []string)      { return l.h.RunbookInfo() }
-func (l *link) Environ() []string                             { return append(l.h.Environ(), fmt.Sprintf("PN=%s", l.alias)) }
-func (l *link) Output() (stdout, stderr io.Writer)            { return l.h.Output() }
-func (l *link) SetOutput(stdout, stderr io.Writer)           { l.h.SetOutput(stdout, stderr) }
-func (l *link) CloneRunbook(runbook.Runtime) *runbook.Runbook { return nil }
-func (l *link) String() string                                { return l.h.String() }
-
-// Perform carry out all stages owned
-// Break if any stage failed
-func (l *link) Perform() error {
-	return l.runbook.Perform()
-}
-
-// Play run stage's task or independent task
-func (l *link) Play(name string) error {
-
-	if s := l.runbook.Stage(name); s != nil {
-		if e := s.Play(); e != nil {
-			return e
-		}
-	}
-	return l.runbook.RunTask(name)
-}
+func (l *link) Provider() string                    { return l.h.Provider() }
+func (l *link) Versions() []string                  { return l.h.Versions() }
+func (l *link) From(file ...string) []string        { return l.h.From(file...) }
+func (l *link) SrcPath() string                     { return l.h.SrcPath() }
+func (l *link) WorkPath() string                    { return l.h.WorkPath() }
+func (l *link) FilePath() []string                  { return l.h.FilePath() }
+func (l *link) BuildDepends(dep ...string) []string { return l.h.BuildDepends() }
+func (l *link) Depends(dep ...string) []string      { return l.h.Depends() }
+func (l *link) Runbook() *runbook.Runbook           { return l.runbook }
+func (l *link) Environ() []string                   { return append(l.h.Environ(), fmt.Sprintf("PN=%s", l.alias)) }
+func (l *link) Output() (stdout, stderr io.Writer)  { return l.h.Output() }
+func (l *link) SetOutput(stdout, stderr io.Writer)  { l.h.SetOutput(stdout, stderr) }
+func (l *link) String() string                      { return l.h.String() }
 
 // Provide create link to provider
 func (c *Carton) Provide(provider ...string) {
@@ -59,10 +41,11 @@ func (c *Carton) Provide(provider ...string) {
 		panic(fmt.Errorf("%s: must add provider in init func", file))
 	}
 
+	rb := c.Runbook()
 	for _, name := range provider {
 
 		link := link{h: c, alias: name}
-		link.runbook = c.CloneRunbook(&link)
+		link.runbook = rb.Clone(&link)
 		addVirtual(&link, name, file)
 		c.provider = append(c.provider, name)
 	}

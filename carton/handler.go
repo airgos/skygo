@@ -23,9 +23,8 @@ type Modifier interface {
 	Depends(dep ...string) []string
 	BuildDepends(dep ...string) []string
 
-	// used to modify task for stage & independent taskset
-	TaskSet() *runbook.TaskSet
-	Stage(name string) *runbook.Stage
+	// give runbook
+	Runbook() *runbook.Runbook
 }
 
 // BuildYard is the interface to provide environment where Builder work
@@ -50,15 +49,10 @@ type Builder interface {
 	Depends(dep ...string) []string
 	BuildDepends(dep ...string) []string
 
-	Play(name string) error
-	Perform() error
-
-	// RunbookInfo give stage sequence with the number of each stage
-	RunbookInfo() ([]string, []int, []string)
+	// give runbook
+	Runbook() *runbook.Runbook
 
 	SetOutput(stdout, stderr io.Writer)
 
 	BuildYard
-
-	CloneRunbook(r runbook.Runtime) *runbook.Runbook
 }

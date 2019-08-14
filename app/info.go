@@ -89,7 +89,7 @@ func show(h carton.Builder) {
 	}
 
 	fmt.Println("==> Runbook")
-	stage, tasknum, taskname := h.RunbookInfo()
+	stage, tasknum, taskname := h.Runbook().RunbookInfo()
 	fmt.Printf("Stage: %s[%d]", stage[0], tasknum[0])
 	for i := 1; i < len(stage); i++ {
 		fmt.Printf(" --> %s[%d]", stage[i], tasknum[i])
