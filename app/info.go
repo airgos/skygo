@@ -19,9 +19,9 @@ func (*info) Run(args ...string) error {
 		return commandLineErrorf("carton name must be supplied")
 	}
 
-	c, virtual := carton.Find(args[0])
-	if c == nil {
-		return fmt.Errorf("%s not found", args[0])
+	c, virtual, e := carton.Find(args[0])
+	if e != nil {
+		return fmt.Errorf("carton %s is %v", args[0], e)
 	}
 
 	if virtual {

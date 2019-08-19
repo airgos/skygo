@@ -95,18 +95,18 @@ func Update(name string, m func(Modifier)) {
 }
 
 // Find find the carton by name
-// if not found, return nil as Builder
-func Find(name string) (h Builder, isVirtual bool) {
+// if not found, return ErrNotFound
+func Find(name string) (h Builder, isVirtual bool, e error) {
 
 	// TODO: handle if exist in both inventory
 	if carton, ok := inventory[name]; ok {
-		return carton, false
+		return carton, false, nil
 	}
 
 	if virtual, ok := virtualInventory[name]; ok {
-		return virtual, true
+		return virtual, true, nil
 	}
-	return nil, true
+	return nil, true, ErrNotFound
 }
 
 // BuildInventory build carton warehouse and then check whether each carton has
@@ -170,9 +170,9 @@ func hasLoopDep(carton string) (bool, []string) {
 
 func adjacentEdges(name string) []string {
 
-	b, _ := Find(name)
-	if b == nil {
-		log.Fatalf("carton %s: %s\n", name, ErrNotFound)
+	b, _, e := Find(name)
+	if e != nil {
+		log.Fatalf("carton %s: %s\n", name, e)
 	}
 
 	dep := b.BuildDepends()
