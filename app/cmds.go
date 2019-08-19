@@ -1,8 +1,10 @@
 package app
 
 import (
+	"boxgo/carton"
 	"flag"
 	"fmt"
+	"os"
 )
 
 // App implement interface Application
@@ -45,6 +47,16 @@ func (app *App) Run(args ...string) error {
 
 	if len(args) == 0 {
 		return commandLineErrorf("command must be supplied")
+	}
+
+	if looped, loop := carton.BuildInventory(); looped {
+
+		fmt.Printf("Loop found: %s", loop[0])
+		for i := 1; i < len(loop); i++ {
+			fmt.Printf(" --> %s", loop[i])
+		}
+		fmt.Println()
+		os.Exit(1)
 	}
 
 	name, args := args[0], args[1:]

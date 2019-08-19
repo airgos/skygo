@@ -28,7 +28,6 @@ func (b *build) Run(args ...string) error {
 		return commandLineErrorf("carton name must be supplied")
 	}
 
-	carton.BuildInventory()
 	c, _ := carton.Find(args[0])
 	c.SetOutput(os.Stdout, os.Stderr)
 	rb := c.Runbook()
