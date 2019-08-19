@@ -4,6 +4,7 @@ import (
 	"boxgo/carton"
 	"flag"
 	"fmt"
+	"os"
 )
 
 type info struct {
@@ -19,7 +20,16 @@ func (*info) Run(args ...string) error {
 		return commandLineErrorf("carton name must be supplied")
 	}
 
-	carton.BuildInventory()
+	if looped, loop := carton.BuildInventory(); looped {
+
+		fmt.Printf("Loop found: %s", loop[0])
+		for i := 1; i < len(loop); i++ {
+			fmt.Printf(" --> %s", loop[i])
+		}
+		fmt.Println()
+		os.Exit(1)
+	}
+
 	c, virtual := carton.Find(args[0])
 	if c == nil {
 		return fmt.Errorf("%s not found", args[0])
@@ -28,6 +38,7 @@ func (*info) Run(args ...string) error {
 	if virtual {
 		fmt.Printf("%s --> %s\n\n", args[0], c.Provider())
 	}
+
 	show(c)
 
 	return nil
