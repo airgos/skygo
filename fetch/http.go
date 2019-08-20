@@ -79,7 +79,7 @@ func download(url, checksum, fpath string) error {
 	}
 
 	if ok, sum := utils.Sha256Matched(checksum, fpath); !ok {
-		return fmt.Errorf("ErrCheckSum: %s %s", url, sum)
+		return fmt.Errorf("ErrCheckSum: %s %s, but expect %s", fpath, sum, checksum)
 	}
 
 	os.Create(done)
