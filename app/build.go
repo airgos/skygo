@@ -40,5 +40,10 @@ func (b *build) Run(args ...string) error {
 		return rb.Perform()
 	}
 
+	// w1, e := os.OpenFile("/dev/ttys002", os.O_RDWR, 0766)
+	// w2, _ := os.OpenFile("/dev/ttys008", os.O_RDWR, 0766)
+	// carton.NewLoad(2, args[0]).SetOutput(0, w1, w1).SetOutput(1, w2, w2).Run()
+	carton.NewLoad(0, args[0]).Run()
+
 	return nil
 }
