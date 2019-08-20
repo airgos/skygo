@@ -249,6 +249,10 @@ func (c *Carton) SrcURL() []fetch.SrcURL {
 		return c.resouce[c.prefer]
 	}
 
+	if len(c.Versions()) == 0 {
+		return []fetch.SrcURL{}
+	}
+
 	return c.resouce[c.Versions()[0]]
 }
 
