@@ -2,6 +2,7 @@
 package carton
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -70,11 +71,11 @@ func NewCarton(name string, m func(c *Carton)) {
 	c.Init(file, c, func(arg Modifier) {
 
 		chain := runbook.NewRunbook(c)
-		p, _ := chain.PushFront(FETCH).AddTask(0, func() error {
-			return fetchExtract(c)
+		p, _ := chain.PushFront(FETCH).AddTask(0, func(ctx context.Context) error {
+			return fetchExtract(ctx, c)
 		})
-		p, _ = p.InsertAfter(PATCH).AddTask(0, func() error {
-			return patch(c)
+		p, _ = p.InsertAfter(PATCH).AddTask(0, func(ctx context.Context) error {
+			return patch(ctx, c)
 		})
 		p.InsertAfter(PREPARE).InsertAfter(BUILD).InsertAfter(INSTALL)
 		c.RunBook = chain
@@ -378,7 +379,7 @@ func (c *Carton) String() string {
 	return b.String()
 }
 
-func fetchExtract(c *Carton) error {
+func fetchExtract(ctx context.Context, c *Carton) error {
 
 	f := fetch.NewFetch(c.SrcURL(), config.DownloadDir(), c)
 	for {
@@ -395,7 +396,7 @@ func fetchExtract(c *Carton) error {
 }
 
 // search patch/diff files under WorkPath, sort, then apply
-func patch(c *Carton) error {
+func patch(ctx context.Context, c *Carton) error {
 
 	wd := c.WorkPath()
 	file, e := os.Open(wd)
@@ -413,7 +414,7 @@ func patch(c *Carton) error {
 		if strings.HasSuffix(fpath, ".diff") || strings.HasSuffix(fpath, ".patch") {
 			patch := filepath.Join(wd, fpath)
 			fmt.Printf("Apply patch file %s\n", patch)
-			if e := runbook.PatchFile(patch, c); e != nil {
+			if e := runbook.PatchFile(ctx, patch, c); e != nil {
 				return e
 			}
 		}

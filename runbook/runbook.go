@@ -2,6 +2,7 @@ package runbook
 
 import (
 	"container/list"
+	"context"
 	"errors"
 	"sync"
 	"sync/atomic"
@@ -122,18 +123,18 @@ func (rb *Runbook) TaskSet() *TaskSet {
 }
 
 // RunTask play one task in dependent taskset
-func (rb *Runbook) RunTask(name string) error {
-	return rb.taskset.Run(name, rb.runtime)
+func (rb *Runbook) RunTask(ctx context.Context, name string) error {
+	return rb.taskset.Run(ctx, name, rb.runtime)
 }
 
 // Perform carry out all stages in the runbook
 // Break if any stage failed
-func (rb *Runbook) Perform() error {
+func (rb *Runbook) Perform(ctx context.Context) error {
 
 	for stage := rb.Head(); stage != nil; stage = stage.Next() {
 		if stage.tasks.Len() > 0 {
 
-			err := stage.Play()
+			err := stage.Play(ctx)
 			if err != nil {
 				return err
 			}
@@ -143,13 +144,13 @@ func (rb *Runbook) Perform() error {
 }
 
 // Play run stage's tasks or the independent task
-func (rb *Runbook) Play(name string) error {
+func (rb *Runbook) Play(ctx context.Context, name string) error {
 	if s := rb.Stage(name); s != nil {
-		if e := s.Play(); e != nil {
+		if e := s.Play(ctx); e != nil {
 			return e
 		}
 	}
-	return rb.RunTask(name)
+	return rb.RunTask(ctx, name)
 }
 
 func newStage(name string, runtime Runtime) *Stage {
@@ -216,7 +217,7 @@ func (s *Stage) DelTask(weight int) {
 }
 
 // Play perform tasks in the stage
-func (s *Stage) Play() error {
+func (s *Stage) Play(ctx context.Context) error {
 
 	if atomic.LoadUint32(&s.executed) == 1 {
 		return nil
@@ -230,7 +231,7 @@ func (s *Stage) Play() error {
 	defer s.m.Unlock()
 	if s.executed == 0 {
 		defer atomic.StoreUint32(&s.executed, 1)
-		return s.tasks.Play(s.runbook.runtime)
+		return s.tasks.Play(ctx, s.runbook.runtime)
 	}
 	return nil
 }

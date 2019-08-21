@@ -2,6 +2,7 @@ package app
 
 import (
 	"boxgo/carton"
+	"context"
 	"flag"
 	"fmt"
 )
@@ -14,7 +15,7 @@ func (*info) Usage() string        { return "<carton name>" }
 func (*info) Summary() string      { return "show information of carton" }
 func (*info) Help(f *flag.FlagSet) {}
 
-func (*info) Run(args ...string) error {
+func (*info) Run(ctx context.Context, args ...string) error {
 	if len(args) == 0 {
 		return commandLineErrorf("carton name must be supplied")
 	}

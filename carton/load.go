@@ -1,6 +1,7 @@
 package carton
 
 import (
+	"context"
 	"io"
 	"runtime"
 	"sync"
@@ -57,7 +58,7 @@ func (l *Load) SetOutput(index int, stdout, stderr io.Writer) *Load {
 }
 
 // TODO: handle error
-func (l *Load) run(carton string) {
+func (l *Load) run(ctx context.Context, carton string) {
 	var wg sync.WaitGroup
 
 	b, _, _ := Find(carton)
@@ -69,18 +70,18 @@ func (l *Load) run(carton string) {
 	for _, d := range deps {
 		go func(carton string) {
 
-			l.run(carton)
+			l.run(ctx, carton)
 			wg.Done()
 		}(d)
 	}
 	wg.Wait()
 	res := l.get()
 	b.SetOutput(res.stdout, res.stderr)
-	b.Runbook().Perform()
+	b.Runbook().Perform(ctx)
 	l.put(res)
 }
 
 // Run start loading
-func (l *Load) Run() {
-	l.run(l.carton)
+func (l *Load) Run(ctx context.Context) {
+	l.run(ctx, l.carton)
 }

@@ -2,6 +2,7 @@ package app
 
 import (
 	"boxgo/carton"
+	"context"
 	"flag"
 	"fmt"
 	"os"
@@ -43,7 +44,7 @@ Available commands are:
 }
 
 // Run takes the args after top level flag processing, and invokes the correct sub command
-func (app *App) Run(args ...string) error {
+func (app *App) Run(ctx context.Context, args ...string) error {
 
 	if len(args) == 0 {
 		return commandLineErrorf("command must be supplied")
@@ -62,7 +63,7 @@ func (app *App) Run(args ...string) error {
 	name, args := args[0], args[1:]
 	for _, c := range app.commands() {
 		if c.Name() == name {
-			Main(c, args)
+			Main(ctx, c, args)
 			return nil
 		}
 	}

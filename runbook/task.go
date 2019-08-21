@@ -1,6 +1,7 @@
 package runbook
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -74,10 +75,10 @@ func (t *TaskSet) Del(key interface{}) {
 }
 
 // Run specific task
-func (t *TaskSet) Run(key string, r Runtime) error {
+func (t *TaskSet) Run(ctx context.Context, key string, r Runtime) error {
 
 	if task, ok := t.set[key]; ok {
-		if err := t.runtask(task, r); err != nil {
+		if err := t.runtask(ctx, task, r); err != nil {
 			return err
 		}
 	} else {
@@ -87,7 +88,7 @@ func (t *TaskSet) Run(key string, r Runtime) error {
 }
 
 // Play run all task by order of Sort.Ints(weight)
-func (t *TaskSet) Play(r Runtime) error {
+func (t *TaskSet) Play(ctx context.Context, r Runtime) error {
 
 	// sort weight
 	weight := make([]int, 0, len(t.set))
@@ -103,28 +104,28 @@ func (t *TaskSet) Play(r Runtime) error {
 	sort.Ints(weight)
 
 	for _, w := range weight {
-		if err := t.runtask(t.set[w], r); err != nil {
+		if err := t.runtask(ctx, t.set[w], r); err != nil {
 			return err
 		}
 	}
 	for _, k := range name {
-		if err := t.runtask(t.set[k], r); err != nil {
+		if err := t.runtask(ctx, t.set[k], r); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (t *TaskSet) runtask(task interface{}, r Runtime) (e error) {
+func (t *TaskSet) runtask(ctx context.Context, task interface{}, r Runtime) (e error) {
 
 	switch kind := task.(type) {
 	default:
 		// fmt.Printf("%T", kind)
 		e = ErrUnknownTaskType
-	case func() error:
-		e = kind()
+	case func(context.Context) error:
+		e = kind(ctx)
 	case TaskCmd:
-		e = kind.Run(r)
+		e = kind.Run(ctx, r)
 	}
 	return
 }
@@ -132,9 +133,7 @@ func (t *TaskSet) runtask(task interface{}, r Runtime) (e error) {
 // Run the TaskCmd, before run, it does:
 // Locate tc.name under runtime GetFilePath(), if found, it's script file, else it's script string
 // If script have function @routine, append routine name
-// TODO:
-// cmd timeout
-func (tc *TaskCmd) Run(tr Runtime, kv ...string) error {
+func (tc *TaskCmd) Run(ctx context.Context, tr Runtime, kv ...string) error {
 
 	var r io.Reader
 	routine := tc.routine
@@ -162,7 +161,7 @@ func (tc *TaskCmd) Run(tr Runtime, kv ...string) error {
 		r = strings.NewReader(tc.name)
 	}
 
-	cmd := exec.Command("/bin/bash")
+	cmd := exec.CommandContext(ctx, "/bin/bash")
 	cmd.Dir = tr.SrcPath()
 	cmd.Stdout, cmd.Stderr = tr.Output()
 

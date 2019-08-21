@@ -1,6 +1,9 @@
 package runbook
 
-import "fmt"
+import (
+	"context"
+	"fmt"
+)
 
 var patchcmd = `
 [ -d .git ] && {
@@ -21,10 +24,10 @@ git apply $PATCHFILE && {
 `
 
 // PatchFile help patch
-func PatchFile(patch string, r Runtime) error {
+func PatchFile(ctx context.Context, patch string, r Runtime) error {
 
 	cmd := TaskCmd{name: patchcmd}
-	if e := cmd.Run(r, fmt.Sprintf("PATCHFILE=%s\n", patch)); e != nil {
+	if e := cmd.Run(ctx, r, fmt.Sprintf("PATCHFILE=%s\n", patch)); e != nil {
 		return fmt.Errorf("Patch %s %s", patch, e)
 	}
 	return nil

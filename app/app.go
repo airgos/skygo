@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log"
@@ -23,7 +24,7 @@ type Application interface {
 	// It should use the flag sets configured Output to write the help to.
 	Help(*flag.FlagSet)
 
-	Run(args ...string) error
+	Run(ctx context.Context, args ...string) error
 }
 
 type commandLineError string
@@ -40,7 +41,7 @@ func commandLineErrorf(message string, args ...interface{}) error {
 }
 
 // Main execute application
-func Main(app Application, args []string) {
+func Main(ctx context.Context, app Application, args []string) {
 
 	s := flag.NewFlagSet(app.Name(), flag.ExitOnError)
 	s.Usage = func() {
@@ -55,7 +56,7 @@ func Main(app Application, args []string) {
 	addflags(s, value)
 
 	s.Parse(args)
-	e := app.Run(s.Args()...)
+	e := app.Run(ctx, s.Args()...)
 	if e != nil {
 		fmt.Fprintf(s.Output(), "%s: %s\n", app.Name(), e)
 		if _, ok := e.(commandLineError); ok {
