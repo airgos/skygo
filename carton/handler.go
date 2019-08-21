@@ -1,7 +1,3 @@
-// Package carton implements ...
-
-// Dependency Format: carton-name[@procedure]
-
 package carton
 
 import (
@@ -23,36 +19,55 @@ type Modifier interface {
 	Depends(dep ...string) []string
 	BuildDepends(dep ...string) []string
 
-	// give runbook
+	// Runbook give runbook
 	Runbook() *runbook.Runbook
 }
 
 // BuildYard is the interface to provide environment where Builder work
-// TODO: merge with fetch and taskcmd
-// merge SrcPath to WorkPath ?
 type BuildYard interface {
+	// SrcPath return  directory of source code
 	SrcPath() string
+
+	// FilePath return a collection of directory that's be used for locating url scheme file:
 	FilePath() []string
+
+	// Environ returns a slice of strings representing the environment,
+	// in the form "key=value".
 	Environ() []string
+
 	Output() (stdout, stderr io.Writer)
 }
 
 // Builder is the interface to build a carton
 type Builder interface {
+
+	// Provider returns what's provided. Provider can be software, image etc
 	Provider() string
+
+	// Versions return version list of source resources
 	Versions() []string
-	String() string
+
+	// From returns which files describe this carton if no argument
+	// if file parameter is given, only the first index will be used to record
+	// who escribes the carton
 	From(file ...string) []string
 
-	WorkPath() string
-
-	Depends(dep ...string) []string
+	// BuildDepends add depends only required for building from scratch
+	// Always return the same kind of depends
 	BuildDepends(dep ...string) []string
 
-	// give runbook
+	// Depends add depends required for building from scratch, running or both
+	// Always return the same kind of depends
+	Depends(dep ...string) []string
+
+	// Runbook return runbook
 	Runbook() *runbook.Runbook
 
+	// SetOutput set stdout, stderr. Runbook's task need it
 	SetOutput(stdout, stderr io.Writer)
 
+	WorkPath() string
 	BuildYard
+
+	String() string
 }

@@ -22,7 +22,7 @@ type Runbook struct {
 }
 
 // Stage is member of Runbook, and hold a set of tasks with differnt weight.
-// task with bigger weight is executed first.
+// task with the lowest weight is executed first.
 type Stage struct {
 	name string
 

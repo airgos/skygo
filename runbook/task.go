@@ -86,7 +86,7 @@ func (t *TaskSet) Run(key string, r Runtime) error {
 	return nil
 }
 
-// Play run all task by Sort.Ints
+// Play run all task by order of Sort.Ints(weight)
 func (t *TaskSet) Play(r Runtime) error {
 
 	// sort weight
