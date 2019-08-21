@@ -58,7 +58,7 @@ func Main(ctx context.Context, app Application, args []string) {
 	s.Parse(args)
 	e := app.Run(ctx, s.Args()...)
 	if e != nil {
-		fmt.Fprintf(s.Output(), "%s: %s\n", app.Name(), e)
+		fmt.Fprintf(s.Output(), "%s\n", e)
 		if _, ok := e.(commandLineError); ok {
 			s.Usage()
 		}
