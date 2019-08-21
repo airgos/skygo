@@ -13,6 +13,8 @@ type Load struct {
 	res    []*resource
 	carton string
 	works  int
+	cancel context.CancelFunc
+	err    error
 }
 
 type resource struct {
@@ -57,7 +59,6 @@ func (l *Load) SetOutput(index int, stdout, stderr io.Writer) *Load {
 	return l
 }
 
-// TODO: handle error
 func (l *Load) run(ctx context.Context, carton string) {
 	var wg sync.WaitGroup
 
@@ -68,20 +69,34 @@ func (l *Load) run(ctx context.Context, carton string) {
 
 	wg.Add(len(deps))
 	for _, d := range deps {
-		go func(carton string) {
+		go func(ctx context.Context, carton string) {
 
-			l.run(ctx, carton)
+			select {
+			default:
+				l.run(ctx, carton)
+			case <-ctx.Done():
+			}
 			wg.Done()
-		}(d)
+		}(ctx, d)
 	}
 	wg.Wait()
 	res := l.get()
 	b.SetOutput(res.stdout, res.stderr)
-	b.Runbook().Perform(ctx)
+	e := b.Runbook().Perform(ctx)
 	l.put(res)
+	if e != nil {
+		l.cancel()
+		if l.err == nil {
+			// BUG: l.err can be overwritten
+			l.err = e
+		}
+	}
 }
 
 // Run start loading
-func (l *Load) Run(ctx context.Context) {
+func (l *Load) Run(ctx context.Context) error {
+	ctx, cancel := context.WithCancel(ctx)
+	l.cancel = cancel
 	l.run(ctx, l.carton)
+	return l.err
 }
