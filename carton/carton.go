@@ -13,9 +13,9 @@ import (
 	"strconv"
 	"strings"
 
-	"boxgo/config"
-	"boxgo/fetch"
-	"boxgo/runbook"
+	"merge/config"
+	"merge/fetch"
+	"merge/runbook"
 )
 
 // Error used by carton

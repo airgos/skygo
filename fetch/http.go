@@ -1,10 +1,10 @@
 package fetch
 
 import (
-	"boxgo/fetch/utils"
 	"errors"
 	"fmt"
 	"io"
+	"merge/fetch/utils"
 	"net/http"
 	"os"
 	"path/filepath"

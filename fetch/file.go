@@ -1,7 +1,7 @@
 package fetch
 
 import (
-	"boxgo/fetch/utils"
+	"merge/fetch/utils"
 	"os"
 	"path/filepath"
 )

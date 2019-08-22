@@ -12,7 +12,7 @@ var patchcmd = `
 }
 
 git init
-git config  user.email "robot@boxgo.com"
+git config  user.email "robot@merge.com"
 git config  user.name "robot"
 git add -A
 git commit -m 'first commit'
