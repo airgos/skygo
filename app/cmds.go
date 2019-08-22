@@ -15,9 +15,9 @@ type App struct {
 }
 
 // New create top Application
-func New(name string) Application {
+func New() Application {
 	app := new(App)
-	app.name = name
+	app.name = "merge"
 	return app
 }
 
