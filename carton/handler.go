@@ -3,6 +3,7 @@ package carton
 import (
 	"io"
 
+	"merge/fetch"
 	"merge/runbook"
 )
 
@@ -46,6 +47,10 @@ type Builder interface {
 
 	// Versions return version list of source resources
 	Versions() []string
+
+	// SrcURL get the latest version of source URL
+	// Use preferred version first if it's set
+	SrcURL() []fetch.SrcURL
 
 	// From returns which files describe this carton if no argument
 	// if file parameter is given, only the first index will be used to record

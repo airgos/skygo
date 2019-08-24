@@ -3,6 +3,7 @@ package carton
 import (
 	"fmt"
 	"io"
+	"merge/fetch"
 	"merge/runbook"
 	"runtime"
 	"strings"
@@ -29,6 +30,7 @@ func (l *link) Runbook() *runbook.Runbook           { return l.runbook }
 func (l *link) Environ() []string                   { return append(l.h.Environ(), fmt.Sprintf("PN=%s", l.alias)) }
 func (l *link) Output() (stdout, stderr io.Writer)  { return l.h.Output() }
 func (l *link) SetOutput(stdout, stderr io.Writer)  { l.h.SetOutput(stdout, stderr) }
+func (l *link) SrcURL() []fetch.SrcURL              { return l.h.SrcURL() }
 func (l *link) String() string                      { return l.h.String() }
 
 // Provide create link to provider

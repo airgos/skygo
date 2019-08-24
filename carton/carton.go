@@ -13,7 +13,6 @@ import (
 	"strconv"
 	"strings"
 
-	"merge/config"
 	"merge/fetch"
 	"merge/runbook"
 )
@@ -72,10 +71,10 @@ func NewCarton(name string, m func(c *Carton)) {
 
 		chain := runbook.NewRunbook(c)
 		p, _ := chain.PushFront(FETCH).AddTask(0, func(ctx context.Context) error {
-			return fetchExtract(ctx, c)
+			return FetchAndExtract(ctx, c)
 		})
 		p, _ = p.InsertAfter(PATCH).AddTask(0, func(ctx context.Context) error {
-			return patch(ctx, c)
+			return Patch(ctx, c)
 		})
 		p.InsertAfter(PREPARE).InsertAfter(BUILD).InsertAfter(INSTALL)
 		c.RunBook = chain
@@ -243,7 +242,6 @@ func (c *Carton) AddHeadSrc(srcURL string) {
 
 // SrcURL get the latest version of source URL
 // Use preferred version first if it's set
-// A return value of nil indicates no SrcURL
 func (c *Carton) SrcURL() []fetch.SrcURL {
 
 	if c.prefer != "" {
@@ -377,47 +375,4 @@ func (c *Carton) String() string {
 	}
 
 	return b.String()
-}
-
-func fetchExtract(ctx context.Context, c *Carton) error {
-
-	f := fetch.NewFetch(c.SrcURL(), config.DownloadDir(), c)
-	for {
-		e, ok := f()
-		if e != nil {
-			return e
-		}
-		if !ok {
-			break
-		}
-	}
-
-	return nil
-}
-
-// search patch/diff files under WorkPath, sort, then apply
-func patch(ctx context.Context, c *Carton) error {
-
-	wd := c.WorkPath()
-	file, e := os.Open(wd)
-	if e != nil {
-		return nil
-	}
-	fpaths, e := file.Readdirnames(-1)
-	if e != nil {
-		return nil
-	}
-	sort.Strings(fpaths)
-	for _, fpath := range fpaths {
-
-		// TODO: log
-		if strings.HasSuffix(fpath, ".diff") || strings.HasSuffix(fpath, ".patch") {
-			patch := filepath.Join(wd, fpath)
-			fmt.Printf("Apply patch file %s\n", patch)
-			if e := runbook.PatchFile(ctx, patch, c); e != nil {
-				return e
-			}
-		}
-	}
-	return nil
 }
