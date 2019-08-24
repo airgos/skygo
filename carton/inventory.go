@@ -3,7 +3,6 @@ package carton
 import (
 	"context"
 	"fmt"
-	"log"
 	"runtime"
 	"sync"
 )
@@ -108,8 +107,8 @@ func Find(name string) (h Builder, isVirtual bool, e error) {
 }
 
 // BuildInventory build carton warehouse and then check whether each carton has
-// loop dependcy hierarchy. if loop is found, it's returned in slice
-func BuildInventory(ctx context.Context) (bool, []string) {
+// loop dependcy hierarchy.
+func BuildInventory(ctx context.Context) error {
 	buildInventory()
 	return detectLoopDep(ctx)
 }
@@ -146,13 +145,13 @@ func buildInventory() {
 }
 
 // detectLoopDep find whether inventory has any carton whose dependcy hierarchy
-// has loop. Loop is returned in slice
-func detectLoopDep(ctx context.Context) (bool, []string) {
+// has loop.
+func detectLoopDep(ctx context.Context) error {
 
 	var (
 		wg   sync.WaitGroup
 		once sync.Once
-		loop []string
+		err  error
 	)
 
 	ctx, cancel := context.WithCancel(ctx)
@@ -178,9 +177,9 @@ func detectLoopDep(ctx context.Context) (bool, []string) {
 				if carton == "" { //why occur
 					return
 				}
-				if looped, l := hasLoopDep(ctx, carton); looped {
+				if e := hasLoopDep(ctx, carton); e != nil {
 					cancel()
-					once.Do(func() { loop = l })
+					once.Do(func() { err = e })
 					return
 				}
 			}
@@ -197,10 +196,10 @@ func detectLoopDep(ctx context.Context) (bool, []string) {
 		}()
 	}
 	wg.Wait()
-	return len(loop) > 0, loop
+	return err
 }
 
-func hasLoopDep(ctx context.Context, carton string) (bool, []string) {
+func hasLoopDep(ctx context.Context, carton string) error {
 	d := new(dfs)
 	d.colors = make(map[string]int)
 	d.path = []string{}
@@ -223,22 +222,25 @@ func (d *dfs) colorSet(vertex string, color int) {
 	d.colors[vertex] = color
 }
 
-func (d *dfs) cyclicUtil(ctx context.Context, vertex string) (bool, []string) {
+func (d *dfs) cyclicUtil(ctx context.Context, vertex string) error {
 
 	d.colorSet(vertex, gray)
 	d.path = append(d.path, vertex)
 
-	edges := adjacentEdges(vertex)
+	edges, e := adjacentEdges(vertex)
+	if e != nil {
+		return e
+	}
 	for _, v := range edges {
 
 		select {
 		case <-ctx.Done():
-			return false, nil
+			return nil
 		default:
 			switch d.colorGet(v) {
 			case white:
-				if looped, loop := d.cyclicUtil(ctx, v); looped {
-					return true, loop
+				if e := d.cyclicUtil(ctx, v); e != nil {
+					return e
 				}
 			case gray:
 				for k := range d.path {
@@ -247,22 +249,21 @@ func (d *dfs) cyclicUtil(ctx context.Context, vertex string) (bool, []string) {
 						break
 					}
 				}
-				// fmt.Println("loop detectedx:", d.path)
-				return true, d.path
+				return fmt.Errorf("detected loop: %v", d.path)
 			default: //continue
 			}
 		}
 	}
 	d.colorSet(vertex, black)
 	d.path = d.path[0 : len(d.path)-1]
-	return false, nil
+	return nil
 }
 
-func adjacentEdges(name string) []string {
+func adjacentEdges(name string) ([]string, error) {
 
 	b, _, e := Find(name)
 	if e != nil {
-		log.Fatalf("carton %s: %s\n", name, e)
+		return nil, fmt.Errorf("carton %s: %s", name, e)
 	}
 
 	dep := b.BuildDepends()
@@ -272,5 +273,5 @@ func adjacentEdges(name string) []string {
 	edges = append(edges, dep...)
 	edges = append(edges, required...)
 
-	return edges
+	return edges, nil
 }
