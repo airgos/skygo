@@ -50,7 +50,7 @@ func (app *App) Run(ctx context.Context, args ...string) error {
 		return commandLineErrorf("command must be supplied")
 	}
 
-	if looped, loop := carton.BuildInventory(); looped {
+	if looped, loop := carton.BuildInventory(ctx); looped {
 
 		fmt.Printf("Loop found: %s", loop[0])
 		for i := 1; i < len(loop); i++ {
