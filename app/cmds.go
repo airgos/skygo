@@ -27,8 +27,8 @@ func (app *App) Name() string { return app.name }
 // Summary implement Application.Summary
 func (app *App) Summary() string { return "All-in-one frontend tool to help make embedded system easy" }
 
-// Usage implement Application.Usage
-func (app *App) Usage() string { return "<command> [command-flags] [command-args]" }
+// UsageLine implement Application.UsageLine
+func (app *App) UsageLine() string { return "<command> [command-flags] [command-args]" }
 
 // Help implement Application.Help to print main help message
 func (app *App) Help(f *flag.FlagSet) {

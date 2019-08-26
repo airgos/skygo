@@ -11,7 +11,7 @@ type info struct {
 }
 
 func (*info) Name() string         { return "info" }
-func (*info) Usage() string        { return "<carton name>" }
+func (*info) UsageLine() string        { return "<carton name>" }
 func (*info) Summary() string      { return "show information of carton" }
 func (*info) Help(f *flag.FlagSet) {}
 

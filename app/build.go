@@ -15,7 +15,7 @@ type build struct {
 }
 
 func (*build) Name() string    { return "carton" }
-func (*build) Usage() string   { return "<carton name>" }
+func (*build) UsageLine() string   { return "<carton name>" }
 func (*build) Summary() string { return "build carton" }
 
 func (*build) Help(f *flag.FlagSet) {
