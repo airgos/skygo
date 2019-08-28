@@ -146,9 +146,7 @@ func (rb *Runbook) Perform(ctx context.Context) error {
 // Play run stage's tasks or the independent task
 func (rb *Runbook) Play(ctx context.Context, name string) error {
 	if s := rb.Stage(name); s != nil {
-		if e := s.Play(ctx); e != nil {
-			return e
-		}
+		return s.Play(ctx)
 	}
 	return rb.RunTask(ctx, name)
 }
