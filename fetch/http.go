@@ -1,6 +1,7 @@
 package fetch
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -20,21 +21,16 @@ import (
 // download: use type int64
 // trace log
 
-type httpFetch struct{}
-
-// HTTPS https scheme fetcher
-var HTTPS httpFetch
-
-func (httpFetch) Fetch(url, dest string, f Fetcher) error {
+func https(ctx context.Context, dd, wd string, url string) error {
 
 	slice := strings.Split(url, "#")
 	if len(slice) != 2 {
-		return errors.New("URL have no checksum")
+		return errors.New("URL have no checksum") // TODO: which carton
 	}
 	u := slice[0]
 
 	base := filepath.Base(u)
-	fpath := filepath.Join(dest, base)
+	fpath := filepath.Join(dd, base)
 
 	if e := download(u, slice[1], fpath); e != nil {
 		return e
@@ -42,7 +38,7 @@ func (httpFetch) Fetch(url, dest string, f Fetcher) error {
 
 	if unar := utils.NewUnarchive(fpath); unar != nil {
 		fmt.Printf("unarchive %s\n", fpath)
-		if e := unar.Unarchive(fpath, f.WorkPath()); e != nil {
+		if e := unar.Unarchive(fpath, wd); e != nil {
 			return fmt.Errorf("unarchive %s failed:%s", base, e.Error())
 		}
 	}

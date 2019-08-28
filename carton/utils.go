@@ -3,32 +3,12 @@ package carton
 import (
 	"context"
 	"fmt"
-	"merge/config"
-	"merge/fetch"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
 )
-
-// FetchAndExtract fetch resource given by b.SrcURL to download dir, then
-// copy or extract to WorkPath
-func FetchAndExtract(ctx context.Context, b Builder) error {
-
-	f := fetch.NewFetch(b.SrcURL(), config.DownloadDir(), b)
-	for {
-		e, ok := f()
-		if e != nil {
-			return e
-		}
-		if !ok {
-			break
-		}
-	}
-
-	return nil
-}
 
 var patchcmd = `
 [ -d .git ] && {

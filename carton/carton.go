@@ -9,10 +9,9 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"sort"
-	"strconv"
 	"strings"
 
+	"merge/config"
 	"merge/fetch"
 	"merge/runbook"
 )
@@ -53,8 +52,7 @@ type Carton struct {
 	depends      []string // needed for both running and building
 	buildDepends []string // only needed when building from scratch
 
-	resouce map[string][]fetch.SrcURL // a collection of src URL
-	prefer  string                    // prefer version of resource
+	fetch *fetch.Resource
 
 	// environment variables who are exported to cartion running space by format key=value
 	environ map[string]string
@@ -71,7 +69,7 @@ func NewCarton(name string, m func(c *Carton)) {
 
 		chain := runbook.NewRunbook(c)
 		p, _ := chain.PushFront(FETCH).AddTask(0, func(ctx context.Context) error {
-			return FetchAndExtract(ctx, c)
+			return c.fetch.Download(ctx)
 		})
 		p, _ = p.InsertAfter(PATCH).AddTask(0, func(ctx context.Context) error {
 			return Patch(ctx, c)
@@ -90,7 +88,8 @@ func (c *Carton) Init(file string, arg Modifier, modify func(arg Modifier)) {
 	add(c, file, func() {
 		c.provider = []string{}
 		c.environ = make(map[string]string)
-		c.resouce = make(map[string][]fetch.SrcURL)
+		b := arg.(Builder)
+		c.fetch = fetch.NewFetch(config.DownloadDir(), b.WorkPath(), b.FilePath())
 
 		c.file = []string{}
 		c.filepath = []string{}
@@ -189,16 +188,15 @@ func (c *Carton) SrcPath() string {
 				}
 			}
 
-			if ver := c.version(); ver == "HEAD" || ver == "" {
-				d = c.Provider()
-			} else {
-				d = fmt.Sprintf("%s-%s", c.Provider(), ver)
+			_, ver := c.Resource().Selected()
+			d = filepath.Join(c.WorkPath(), fmt.Sprintf("%s-%s", c.Provider(), ver))
+			if info, e := os.Stat(d); e == nil && info.IsDir() {
+				c.srcpath = d
+				return d
 			}
-			d = filepath.Join(c.WorkPath(), d)
-			c.srcpath = d
-			return d
 		}
 	}
+	// TODO: print log to tell user to set Src explicitily
 	return ""
 }
 
@@ -225,90 +223,9 @@ func (c *Carton) FilePath() []string {
 	return c.filepath
 }
 
-// AddSrcURL add SrcURL which is a set of source URL. Each URL is delimited by SPACE
-// version: used to identify which SrcURL. If URL's protocol is git, use "HEAD" as version
-func (c *Carton) AddSrcURL(version string, srcURL string) {
-	url := strings.Fields(srcURL)
-	for _, u := range url {
-		c.resouce[version] = append(c.resouce[version], fetch.SrcURL(u))
-	}
-}
-
-// AddHeadSrc add git repository URLs with delimiter SPACE
-func (c *Carton) AddHeadSrc(srcURL string) {
-
-	c.resouce["HEAD"] = append(c.resouce["HEAD"], fetch.SrcURL(srcURL))
-}
-
-// SrcURL get the latest version of source URL
-// Use preferred version first if it's set
-func (c *Carton) SrcURL() []fetch.SrcURL {
-
-	if c.prefer != "" {
-		return c.resouce[c.prefer]
-	}
-
-	if len(c.Versions()) == 0 {
-		return []fetch.SrcURL{}
-	}
-
-	return c.resouce[c.Versions()[0]]
-}
-
-// Versions give available version as slice. HEAD is pushed back
-// A return nil indicates no SrcURL is added
-func (c *Carton) Versions() []string {
-
-	if len(c.resouce) == 0 {
-		return nil
-	}
-
-	version := []string{}
-	for k := range c.resouce {
-		version = append(version, k)
-	}
-
-	min := func(x, y int) int {
-		if x < y {
-			return x
-		}
-		return y
-	}
-	sort.Slice(version, func(i, j int) bool {
-
-		a := strings.Split(version[i], ".")
-		b := strings.Split(version[j], ".")
-		num := min(len(a), len(b))
-		for i := 0; i < num; i++ {
-			na, e := strconv.Atoi(a[i])
-			if e != nil {
-				return false
-			}
-			nb, _ := strconv.Atoi(b[i])
-			if na > nb {
-				return true
-			}
-		}
-		return len(a) > len(b)
-	})
-	return version
-}
-
-// version return which version of SrcURL will be selected
-func (c *Carton) version() string {
-	if c.prefer != "" {
-		return c.prefer
-	}
-	if v := c.Versions(); v != nil {
-		return v[0]
-	}
-	return ""
-}
-
-// PreferSrcURL let user to decide which version of srcURL is used
-func (c *Carton) PreferSrcURL(version string) {
-	// TODO: insure version exist
-	c.prefer = version
+// Resource return fetch state
+func (c *Carton) Resource() *fetch.Resource {
+	return c.fetch
 }
 
 // WorkPath return value of WorkPath
@@ -336,7 +253,8 @@ func (c *Carton) Environ() []string {
 	for k, v := range c.environ {
 		env = append(env, fmt.Sprintf("%s=%s", k, v))
 	}
-	env = append(env, fmt.Sprintf("PV=%s", c.version()), fmt.Sprintf("SRC=%s", c.SrcPath()))
+	_, ver := c.Resource().Selected()
+	env = append(env, fmt.Sprintf("PV=%s", ver), fmt.Sprintf("SRC=%s", c.SrcPath()))
 	return env
 }
 

@@ -1,85 +1,239 @@
 package fetch
 
 import (
+	"container/list"
+	"context"
+	"errors"
 	"fmt"
-	"io"
+	"os"
+	"sort"
+	"strconv"
 	"strings"
+	"sync"
+	"sync/atomic"
 )
 
-// SrcURL represent src URL with additional info, like Sha256 checksum, git revision
-// that can be branch name, tag name or the prefix of the commit hash.
-// SrcURL can hold multiple src URL with space delimiter.
-// If sign @ is in the URL, its protocol is git regardless of scheme
-// Example:
-// git://x.y.z@v1.1
-// http://x.y.z@master
-// http://x.y.z#sha256
-// https://x.y.z#sha256
-// file://path/local/file
-type SrcURL string
+// Resource represent state of fetch
+type Resource struct {
+	resource map[string]SrcURL
+	dd, wd   string   // absolute directory path
+	filepath []string // search dir list for scheme file://
 
-// Fetcher implement methods to help fetch
-type Fetcher interface {
-	Output() (stdout, stderr io.Writer)
-	WorkPath() string
-	FilePath() []string
+	// preferred version
+	// print error log if prefer version is set again
+	prefer string
+	m      sync.Mutex
+	done   uint32
+
+	selected string // indicated which version is selected
 }
 
-// Handler implement method to fetch
-type Handler interface {
-	Fetch(url, dest string, f Fetcher) error
+// SrcURL holds a collection of Source URL in specific version
+type SrcURL struct {
+	head *list.List
 }
 
-// map protocol to fetch handler
-// TODO: "https://github.com/neovim/neovim.git", it's git protocol, not http
-// 1. add match associated with each handler, git before http/https
-// 2. global match, allow user to add hook based on domain/protoocl?. Better, it can help download from special http site(extract real url)
-var fetchers = map[string]Handler{
-
-	"http":  HTTPS,
-	"https": HTTPS,
-	"git":   GIT,
-	"file":  FILE,
+type fetchCmd struct {
+	fetch interface{}
+	url   string
 }
 
-// RegisterHandler register scheme handler
-func RegisterHandler(scheme string, h Handler) {
-	fetchers[scheme] = h
-}
+func (cmd *fetchCmd) Download(ctx context.Context, res *Resource) error {
 
-// NewFetch create iterator to fetch URLs one by one
-func NewFetch(url []SrcURL, dest string, fetcher Fetcher) func() (error, bool) {
+	switch m := cmd.fetch.(type) {
 
-	index := 0
-	size := len(url)
+	// for https, vscGit
+	case func(context.Context, []string, string, string) error:
+		return m(ctx, res.filepath, res.wd, cmd.url)
 
-	return func() (error, bool) {
-		var scheme string
+	// scheme file: handler
+	case func(context.Context, string, string, string) error:
+		return m(ctx, res.dd, res.wd, cmd.url)
 
-		if index >= size {
-			return nil, false
-		}
-		s := string(url[index])
-
-		if i := strings.Index(s, "://"); i > 0 {
-			scheme = s[0:i]
-
-		} else {
-
-			return fmt.Errorf("Fetch: invalid URL %s", s), false
-		}
-
-		// regardless of scheme, it's considered as git protocol
-		if strings.Contains(s, "@") {
-			scheme = "git"
-		}
-
-		f, ok := fetchers[scheme]
-		if !ok {
-			return fmt.Errorf("Fetch: no handler for scheme %s", scheme), false
-		}
-		index++
-
-		return f.Fetch(s, dest, fetcher), true
+	default:
+		return errors.New("Unknown fetch command")
 	}
+}
+
+// NewFetch create fetch state
+func NewFetch(dd, wd string, filepath []string) *Resource {
+
+	fetch := new(Resource)
+
+	fetch.wd = wd
+	fetch.dd = dd
+	fetch.filepath = filepath
+	fetch.resource = make(map[string]SrcURL)
+	return fetch
+}
+
+// ByVersion get SrcURL by version
+// If not found, create empty holder
+func (fetch *Resource) ByVersion(version string) *SrcURL {
+
+	if res, ok := fetch.resource[version]; ok {
+		return &res
+	}
+	res := SrcURL{head: list.New()}
+	fetch.resource[version] = res
+	return &res
+}
+
+// Versions sort all SrcURL from latest to older, then return in slice
+func (fetch *Resource) Versions() []string {
+
+	num := len(fetch.resource)
+	versions := make([]string, num)
+	i := 0
+	for v := range fetch.resource {
+		versions[i] = v
+		i++
+	}
+
+	min := func(x, y int) int {
+		if x < y {
+			return x
+		}
+		return y
+	}
+	// example version sorting result: 2.0 > 1.0.1 > 1.0 > HEAD
+	sort.Slice(versions, func(i, j int) bool {
+
+		a := strings.Split(versions[i], ".")
+		b := strings.Split(versions[j], ".")
+		num := min(len(a), len(b))
+		for i := 0; i < num; i++ {
+			na, e := strconv.Atoi(a[i])
+			if e != nil {
+				return false
+			}
+			nb, _ := strconv.Atoi(b[i])
+			if na > nb {
+				return true
+			}
+
+			if na < nb {
+				return false
+			}
+		}
+		return len(a) > len(b)
+	})
+	return versions
+}
+
+// Prefer set preferred version of SrcURL
+func (fetch *Resource) Prefer(version string) {
+
+	if atomic.LoadUint32(&fetch.done) == 1 {
+		// TODO: log
+		fmt.Fprintf(os.Stdout, "Try to set preferred version again!")
+		return
+	}
+
+	fetch.m.Lock()
+	defer fetch.m.Unlock()
+	if fetch.done == 0 {
+		defer atomic.StoreUint32(&fetch.done, 1)
+		fetch.prefer = version
+	}
+}
+
+// Selected return selected SrcURL and its version
+// select preferred then latest version of SrcURL
+func (fetch *Resource) Selected() (*SrcURL, string) {
+
+	if fetch.selected == "" {
+
+		if fetch.prefer != "" {
+			fetch.selected = fetch.prefer
+		} else {
+			versions := fetch.Versions()
+			if len(versions) > 0 {
+				fetch.selected = versions[0]
+			}
+		}
+	}
+
+	if res, ok := fetch.resource[fetch.selected]; ok {
+		return &res, fetch.selected
+	}
+	return nil, ""
+}
+
+// Download download all source URL held by selected SrcURL
+// Extract automatically if source URL is an archiver, like tar.bz2
+func (fetch *Resource) Download(ctx context.Context) error {
+
+	res, _ := fetch.Selected()
+	if res == nil {
+		// TODO: warning not found
+		return nil
+	}
+
+	h := res.head
+	for e := h.Front(); e != nil; e = e.Next() {
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("Fetch is aborted by context")
+		default:
+			fetchCmd := e.Value.(*fetchCmd)
+			if err := fetchCmd.Download(ctx, fetch); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// PushFile push scheme file:// to SrcURL
+// srcurl can hold multiple URL with delimeter space
+func (res *SrcURL) PushFile(srcurl string) *SrcURL {
+
+	url := strings.Fields(srcurl)
+	for _, u := range url {
+
+		url := fetchCmd{
+			fetch: file,
+			url:   u,
+		}
+		res.head.PushBack(&url)
+	}
+	return res
+}
+
+// PushVcs push git repository url to SrcURL
+// srcurl's scheme must be known by utility git. tag and commit sha can be
+// appened at the end with delimeter @, like git://x.y.z@v1.1
+// srcurl can hold multiple URL with delimeter space
+func (res *SrcURL) PushVcs(srcurl string) *SrcURL {
+
+	url := strings.Fields(srcurl)
+	for _, u := range url {
+
+		url := fetchCmd{
+			fetch: vcsGit,
+			url:   u,
+		}
+		res.head.PushBack(&url)
+	}
+	return res
+}
+
+// PushHTTP push Http or Https URL to SrcURL
+// srcurl's scheme must be https:// or http://, and sha256 checksum must be
+// append at the end with delimeter #
+// e.g.  http://x.y.z#sha256
+// srcurl can hold multiple URL with delimeter space
+func (res *SrcURL) PushHTTP(srcurl string) *SrcURL {
+
+	url := strings.Fields(srcurl)
+	for _, u := range url {
+
+		url := fetchCmd{
+			fetch: https,
+			url:   u,
+		}
+		res.head.PushBack(&url)
+	}
+	return res
 }

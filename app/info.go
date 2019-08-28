@@ -11,7 +11,7 @@ type info struct {
 }
 
 func (*info) Name() string         { return "info" }
-func (*info) UsageLine() string        { return "<carton name>" }
+func (*info) UsageLine() string    { return "<carton name>" }
 func (*info) Summary() string      { return "show information of carton" }
 func (*info) Help(f *flag.FlagSet) {}
 
@@ -36,24 +36,19 @@ func (*info) Run(ctx context.Context, args ...string) error {
 
 func show(h carton.Builder) {
 
-	// TODO: indicates whether it is installed, and version
+	// TODO:
+	// indicates whether it is installed
+	// highlight selected version
 	fmt.Printf("%s", h.Provider())
-	versions := h.Versions()
-	HEAD := false
+	versions := h.Resource().Versions()
 	if len(versions) > 0 {
 		fmt.Printf(": %s", versions[0])
 		for _, ver := range versions[1:] {
 			fmt.Printf(", %s", ver)
 		}
-		HEAD = versions[len(versions)-1] == "HEAD"
 	}
 	fmt.Println()
 	fmt.Println(h)
-
-	if HEAD {
-		fmt.Println("==> Options")
-		fmt.Printf("%s\n %s\n", "--HEAD", "Install HEAD version")
-	}
 
 	// print dependencies
 	builds := h.BuildDepends()

@@ -1,22 +1,17 @@
 package fetch
 
 import (
+	"context"
 	"merge/fetch/utils"
 	"os"
 	"path/filepath"
 )
 
-type locate struct{}
-
-// FILE file scheme fetcher
-var FILE locate
-
-// TODO: print log(file, filePath) if file is not found
-func (locate) Fetch(url, dest string, f Fetcher) error {
+func file(ctx context.Context, filePath []string, wd string, url string) error {
 
 	// skip file://
 	url = url[7:]
-	for _, d := range f.FilePath() {
+	for _, d := range filePath {
 
 		path := filepath.Join(d, url)
 		fileinfo, err := os.Stat(path)
@@ -27,7 +22,7 @@ func (locate) Fetch(url, dest string, f Fetcher) error {
 		if err != nil {
 			return err
 		}
-		target := filepath.Join(f.WorkPath(), filepath.Base(url))
+		target := filepath.Join(wd, filepath.Base(url))
 		utils.CopyFile(target, fileinfo.Mode(), file)
 		// TODO: copy when mod time and content is chagned
 		break

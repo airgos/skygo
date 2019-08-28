@@ -11,9 +11,6 @@ import (
 type Modifier interface {
 	AddFilePath(dir string) error
 
-	AddHeadSrc(srcURL string)
-	AddSrcURL(versiong string, srcURL string)
-	PreferSrcURL(version string)
 	SetSrcPath(dir string) error
 
 	// used to update dependency
@@ -22,6 +19,9 @@ type Modifier interface {
 
 	// Runbook give runbook
 	Runbook() *runbook.Runbook
+
+	// Return fetch state
+	Resource() *fetch.Resource
 }
 
 // BuildYard is the interface to provide environment where Builder work
@@ -45,13 +45,6 @@ type Builder interface {
 	// Provider returns what's provided. Provider can be software, image etc
 	Provider() string
 
-	// Versions return version list of source resources
-	Versions() []string
-
-	// SrcURL get the latest version of source URL
-	// Use preferred version first if it's set
-	SrcURL() []fetch.SrcURL
-
 	// From returns which files describe this carton if no argument
 	// if file parameter is given, only the first index will be used to record
 	// who escribes the carton
@@ -67,6 +60,9 @@ type Builder interface {
 
 	// Runbook return runbook
 	Runbook() *runbook.Runbook
+
+	// Return fetch state
+	Resource() *fetch.Resource
 
 	// SetOutput set stdout, stderr. Runbook's task need it
 	SetOutput(stdout, stderr io.Writer)
