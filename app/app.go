@@ -47,7 +47,7 @@ func Main(ctx context.Context, app Application, args []string) {
 	s.Usage = func() {
 
 		fmt.Fprint(s.Output(), app.Summary())
-		fmt.Fprintf(s.Output(), "\n\nUsageLine: %s [flags] %s\n", app.Name(), app.UsageLine())
+		fmt.Fprintf(s.Output(), "\n\nUsage: %s [flags] %s\n", app.Name(), app.UsageLine())
 		app.Help(s)
 		// if flag have method to report how many flags are added, call s.PrintDefaults() here
 	}
