@@ -42,7 +42,7 @@ func (cmd *fetchCmd) Download(ctx context.Context, res *Resource) error {
 
 	switch m := cmd.fetch.(type) {
 
-	// for https, vscGit
+	// for http,https,vscGit
 	case func(context.Context, []string, string, string) error:
 		return m(ctx, res.filepath, res.wd, cmd.url)
 
@@ -230,7 +230,7 @@ func (res *SrcURL) PushHTTP(srcurl string) *SrcURL {
 	for _, u := range url {
 
 		url := fetchCmd{
-			fetch: https,
+			fetch: httpAndUnpack,
 			url:   u,
 		}
 		res.head.PushBack(&url)

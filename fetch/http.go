@@ -17,11 +17,12 @@ import (
 
 //TODO:
 // get fetch thread
-// don't fetch in parallel in file size is less then 0.5M
-// download: use type int64
+// don't fetch in parallel if file size is less then 0.5M
 // trace log
+// don't unpack again if it's done
 
-func https(ctx context.Context, dd, wd string, url string) error {
+// support scheme http and https. if file is archiver, unpack it
+func httpAndUnpack(ctx context.Context, dd, wd string, url string) error {
 
 	slice := strings.Split(url, "#")
 	if len(slice) != 2 {
