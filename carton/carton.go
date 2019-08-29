@@ -38,7 +38,6 @@ const (
 type Carton struct {
 	Desc     string // oneline description
 	Homepage string // home page
-	RunBook  *runbook.Runbook
 
 	name     string
 	provider []string
@@ -52,7 +51,8 @@ type Carton struct {
 	depends      []string // needed for both running and building
 	buildDepends []string // only needed when building from scratch
 
-	fetch *fetch.Resource
+	fetch   *fetch.Resource
+	runbook *runbook.Runbook
 
 	// environment variables who are exported to cartion running space by format key=value
 	environ map[string]string
@@ -75,7 +75,7 @@ func NewCarton(name string, m func(c *Carton)) {
 			return Patch(ctx, c)
 		})
 		p.InsertAfter(PREPARE).InsertAfter(BUILD).InsertAfter(INSTALL)
-		c.RunBook = chain
+		c.runbook = chain
 
 		m(c)
 	})
@@ -243,7 +243,12 @@ func (c *Carton) WorkPath() string {
 
 // Runbook return runbook hold by Carton
 func (c *Carton) Runbook() *runbook.Runbook {
-	return c.RunBook
+	return c.runbook
+}
+
+// SetRunbook assign runbook
+func (c *Carton) SetRunbook(rb *runbook.Runbook) {
+	c.runbook = rb
 }
 
 // Environ returns a copy of strings representing the environment,
