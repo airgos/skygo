@@ -201,28 +201,34 @@ func (res *SrcURL) PushFile(srcurl string) *SrcURL {
 	return res
 }
 
-// PushVcs push git repository url to SrcURL
-// srcurl's scheme must be known by utility git. tag and commit sha can be
-// appened at the end with delimeter @, like git://x.y.z@v1.1
-// srcurl can hold multiple URL with delimeter space
+// PushVcs push one vcs repository to SrcURL
+// srcurl is repository or repository@revision
+// repository must be known by vcs utility like git
+// revision identifier for the underlying source repository, such as a commit
+// hash prefix, revision tag, or branch name, selects that specific code revision.
+// valid srcurl example:
+//     https://github.com:foo/bar.git
+//     https://github.com:foo/bar.git@v1.1
+//     https://github.com:foo/bar.git@c198403
 func (res *SrcURL) PushVcs(srcurl string) *SrcURL {
 
-	url := strings.Fields(srcurl)
-	for _, u := range url {
-
-		url := fetchCmd{
-			fetch: vcsGit,
-			url:   u,
-		}
-		res.head.PushBack(&url)
+	if strings.Contains(srcurl, " ") {
+		// TODO: who ?
+		panic("it contains multiple repo in one url")
 	}
+
+	url := fetchCmd{
+		fetch: vcsFetch,
+		url:   srcurl,
+	}
+	res.head.PushBack(&url)
 	return res
 }
 
 // PushHTTP push Http or Https URL to SrcURL
 // srcurl's scheme must be https:// or http://, and sha256 checksum must be
 // append at the end with delimeter #
-// e.g.  http://x.y.z#sha256
+// e.g.  http://x.y.z/foo.tar.bz2#sha256
 // srcurl can hold multiple URL with delimeter space
 func (res *SrcURL) PushHTTP(srcurl string) *SrcURL {
 
