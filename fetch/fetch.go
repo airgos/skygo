@@ -26,6 +26,10 @@ type Resource struct {
 	done   uint32
 
 	selected string // indicated which version is selected
+
+	// save only one url failed to fetch
+	failedURL string
+	once      sync.Once
 }
 
 // SrcURL holds a collection of Source URL in specific version
@@ -164,6 +168,7 @@ func (fetch *Resource) Selected() (*SrcURL, string) {
 // Extract automatically if source URL is an archiver, like tar.bz2
 func (fetch *Resource) Download(ctx context.Context) error {
 
+	var wg sync.WaitGroup
 	res, _ := fetch.Selected()
 	if res == nil {
 		// TODO: warning not found
@@ -171,16 +176,25 @@ func (fetch *Resource) Download(ctx context.Context) error {
 	}
 
 	h := res.head
+
+	ctx, cancel := context.WithCancel(ctx)
+	wg.Add(h.Len())
 	for e := h.Front(); e != nil; e = e.Next() {
-		select {
-		case <-ctx.Done():
-			return fmt.Errorf("Fetch is aborted by context")
-		default:
+		go func(e *list.Element) {
+
 			fetchCmd := e.Value.(*fetchCmd)
 			if err := fetchCmd.Download(ctx, fetch); err != nil {
-				return err
+				fetch.once.Do(func() {
+					fetch.failedURL = fetchCmd.url
+					cancel()
+				})
 			}
-		}
+			wg.Done()
+		}(e)
+	}
+	wg.Wait()
+	if fetch.failedURL != "" {
+		return fmt.Errorf("failed to fetch %s", fetch.failedURL)
 	}
 	return nil
 }
