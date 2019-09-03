@@ -1,6 +1,7 @@
 package carton
 
 import (
+	"context"
 	"io"
 
 	"merge/fetch"
@@ -69,6 +70,10 @@ type Builder interface {
 
 	WorkPath() string
 	BuildYard
+
+	// Clean cleanup
+	// if force is true, remove work path; else try to run independent task clean
+	Clean(ctx context.Context, force bool) error
 
 	String() string
 }

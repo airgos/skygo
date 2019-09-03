@@ -46,6 +46,12 @@ func (t *TaskSet) Len() int {
 	return len(t.set)
 }
 
+// Has return whether TaskSet has task
+func (t *TaskSet) Has(name string) bool {
+	_, ok := t.set[name]
+	return ok
+}
+
 // Add task. Return ErrTaskAdded if key was set
 // TODO: return TaskCmd ?
 func (t *TaskSet) Add(key interface{}, task interface{}) (*TaskSet, error) {
@@ -82,7 +88,7 @@ func (t *TaskSet) Run(ctx context.Context, key string, r Runtime) error {
 			return err
 		}
 	} else {
-		return fmt.Errorf("No task %s", key)
+		return fmt.Errorf("Unknown task %s", key)
 	}
 	return nil
 }

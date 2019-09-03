@@ -269,6 +269,21 @@ func (c *Carton) Setenv(key, value string) {
 	c.environ[key] = value
 }
 
+// Clean cleanup
+// if force is true, remove work path; else try to run independent task clean
+func (c *Carton) Clean(ctx context.Context, force bool) error {
+	if force {
+		wd := c.WorkPath()
+		os.RemoveAll(wd)
+		return nil
+	}
+	tset := c.Runbook().TaskSet()
+	if tset.Has("clean") {
+		return tset.Run(ctx, "clean", c)
+	}
+	return runbook.ErrUnknownTask
+}
+
 func (c *Carton) String() string {
 
 	var b strings.Builder

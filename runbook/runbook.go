@@ -13,6 +13,7 @@ var (
 	ErrTaskAdded       = errors.New("Task Added")
 	ErrUnknownTaskType = errors.New("Unkown Task Type")
 	ErrNilStage        = errors.New("Nil Stage")
+	ErrUnknownTask     = errors.New("Unkown Task")
 )
 
 // Runbook consists of a series of stage and a independent taskset
