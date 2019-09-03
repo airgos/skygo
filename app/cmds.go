@@ -70,5 +70,6 @@ func (*App) commands() []Application {
 	return []Application{
 		&info{},
 		&build{},
+		&clean{},
 	}
 }
