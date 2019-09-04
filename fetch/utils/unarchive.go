@@ -16,6 +16,7 @@ import (
 	"strings"
 )
 
+// Unarchiver is the interface to extract archiver
 type Unarchiver interface {
 	Unarchive(fpath, dest string) error
 }
@@ -29,6 +30,7 @@ var unarchiver = map[string]Unarchiver{
 	".tar.bz2": untbz2,
 }
 
+// NewUnarchive create new Unarchiver
 func NewUnarchive(fpath string) Unarchiver {
 	for k, u := range unarchiver {
 		if strings.HasSuffix(fpath, k) {
@@ -76,10 +78,10 @@ func (tarfmt) Unarchive(fpath, dest string) error {
 	}
 	defer file.Close()
 	tr := tar.NewReader(file)
-	return UnTar(tr, dest)
+	return unTar(tr, dest)
 }
 
-func UnTar(tr *tar.Reader, dest string) error {
+func unTar(tr *tar.Reader, dest string) error {
 
 	for {
 		header, err := tr.Next()
@@ -105,7 +107,7 @@ func UnTar(tr *tar.Reader, dest string) error {
 			CreateSymbolicLink(target, header.Linkname)
 
 		default:
-			return fmt.Errorf("%s: Unknown Typeflag!", header.Name)
+			return fmt.Errorf("%s: Unknown Typeflag", header.Name)
 		}
 	}
 	return nil
@@ -127,7 +129,7 @@ func (tgzfmt) Unarchive(fpath, dest string) error {
 	}
 	defer gr.Close()
 	tr := tar.NewReader(gr)
-	return UnTar(tr, dest)
+	return unTar(tr, dest)
 }
 
 type tbz2fmt struct{}
@@ -143,5 +145,5 @@ func (tbz2fmt) Unarchive(fpath, dest string) error {
 
 	br := bzip2.NewReader(file)
 	tr := tar.NewReader(br)
-	return UnTar(tr, dest)
+	return unTar(tr, dest)
 }

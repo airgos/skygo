@@ -13,7 +13,7 @@ import (
 	"path/filepath"
 )
 
-// read from IO r and write to file @name with FileMode @mode
+// CopyFile read from IO r and write to file @name with FileMode @mode
 func CopyFile(name string, mode os.FileMode, r io.Reader) error {
 
 	os.MkdirAll(filepath.Dir(name), 0755)
@@ -28,6 +28,7 @@ func CopyFile(name string, mode os.FileMode, r io.Reader) error {
 	return nil
 }
 
+// CreateSymbolicLink create symbol link
 func CreateSymbolicLink(fpath string, linkName string) error {
 	err := os.MkdirAll(filepath.Dir(fpath), 0755)
 	if err != nil {
@@ -42,6 +43,7 @@ func CreateSymbolicLink(fpath string, linkName string) error {
 	return nil
 }
 
+// Sha256Matched return whether checksum is matched
 func Sha256Matched(csum, fpath string) (bool, string) {
 
 	file, _ := os.Open(fpath)
