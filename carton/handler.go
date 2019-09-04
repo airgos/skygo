@@ -14,8 +14,12 @@ import (
 
 // Modifier is the interface to help modify carton
 type Modifier interface {
+
+	// appends one path to File Path
+	// dir will be joined with directory path of which file invokes AddFilePath
 	AddFilePath(dir string) error
 
+	// Set where source code is explicitly
 	SetSrcPath(dir string) error
 
 	// used to update dependency

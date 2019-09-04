@@ -213,13 +213,21 @@ func (c *Carton) SetSrcPath(dir string) error {
 	return nil
 }
 
-// AddFilePath appends one dir path
-// based on who(carton provider) call, don't give full path
+// AddFilePath appends one path to File Path
+// dir will be joined with directory path of which file invokes AddFilePath
 func (c *Carton) AddFilePath(dir string) error {
 
-	// TODO: find dir in file provider dir
-	c.filepath = append(c.filepath, dir)
-	return nil
+	if filepath.IsAbs(dir) {
+		return ErrAbsPath
+	}
+	_, file, _, _ := runtime.Caller(1)
+	dir = filepath.Join(filepath.Dir(file), dir)
+	_, e := os.Stat(dir)
+	if e == nil {
+
+		c.filepath = append(c.filepath, dir)
+	}
+	return e
 }
 
 // FilePath return FilePath
