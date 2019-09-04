@@ -1,3 +1,7 @@
+// Copyright © 2019 Michael. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
 package app
 
 import (
@@ -14,9 +18,9 @@ type build struct {
 	// TODO: -HEAD, -interactive
 }
 
-func (*build) Name() string    { return "carton" }
-func (*build) UsageLine() string   { return "<carton name>" }
-func (*build) Summary() string { return "build carton" }
+func (*build) Name() string      { return "carton" }
+func (*build) UsageLine() string { return "<carton name>" }
+func (*build) Summary() string   { return "build carton" }
 
 func (*build) Help(f *flag.FlagSet) {
 
