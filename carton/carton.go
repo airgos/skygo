@@ -9,7 +9,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -46,8 +45,6 @@ type Carton struct {
 
 	name     string
 	provider []string
-
-	stdout, stderr io.Writer
 
 	file     []string // which files offer this carton
 	srcpath  string   // path(dir) of SRC code
@@ -104,17 +101,6 @@ func (c *Carton) Init(file string, arg Modifier, modify func(arg Modifier)) {
 
 		modify(arg)
 	})
-}
-
-// Output return io.Writer Stdout, Stderr
-func (c *Carton) Output() (stdout, stderr io.Writer) {
-	return c.stdout, c.stderr
-}
-
-// SetOutput set Stdout, Stderr
-func (c *Carton) SetOutput(stdout, stderr io.Writer) {
-	c.stdout = stdout
-	c.stderr = stderr
 }
 
 // Provider return what's provided

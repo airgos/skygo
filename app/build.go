@@ -8,8 +8,10 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"merge/carton"
 	"os"
+
+	"merge/carton"
+	"merge/runbook"
 )
 
 type build struct {
@@ -37,11 +39,13 @@ func (b *build) Run(ctx context.Context, args ...string) error {
 	if e != nil {
 		return fmt.Errorf("carton %s is %s", args[0], e)
 	}
-	c.SetOutput(os.Stdout, os.Stderr)
+
 	rb := c.Runbook()
 	if b.Exec != "" {
+		ctx = runbook.CtxWithOutput(ctx, os.Stdout, os.Stderr)
 		return rb.Play(ctx, b.Exec)
 	} else if b.NoDeps {
+		ctx = runbook.CtxWithOutput(ctx, os.Stdout, os.Stderr)
 		return rb.Perform(ctx)
 	}
 

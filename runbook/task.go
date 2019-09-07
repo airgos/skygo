@@ -23,7 +23,6 @@ import (
 type Runtime interface {
 	SrcPath() string    // where to run
 	FilePath() []string // where to find script file
-	Output() (stdout, stderr io.Writer)
 	Environ() []string
 }
 
@@ -174,7 +173,7 @@ func (tc *TaskCmd) Run(ctx context.Context, tr Runtime) error {
 
 	cmd := exec.CommandContext(ctx, "/bin/bash")
 	cmd.Dir = tr.SrcPath()
-	cmd.Stdout, cmd.Stderr = tr.Output()
+	cmd.Stdout, cmd.Stderr = OutputFromCtx(ctx)
 
 	if routine != "" {
 

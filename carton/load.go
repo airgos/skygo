@@ -7,8 +7,11 @@ package carton
 import (
 	"context"
 	"io"
+	"os"
 	"runtime"
 	"sync"
+
+	"merge/runbook"
 )
 
 // Load represent state of load
@@ -85,7 +88,8 @@ func (l *Load) run(ctx context.Context, carton string) {
 	}
 	wg.Wait()
 	res := l.get()
-	b.SetOutput(res.stdout, res.stderr)
+
+	ctx = runbook.CtxWithOutput(ctx, os.Stdout, os.Stderr)
 	e := b.Runbook().Perform(ctx)
 	l.put(res)
 	if e != nil {

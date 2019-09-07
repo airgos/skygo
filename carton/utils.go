@@ -7,12 +7,14 @@ package carton
 import (
 	"context"
 	"fmt"
-	"merge/log"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"merge/log"
+	"merge/runbook"
 )
 
 var patchcmd = `
@@ -60,7 +62,7 @@ func Patch(ctx context.Context, b Builder) error {
 
 				cmd := exec.CommandContext(ctx, "/bin/bash", "-c", patchcmd)
 				cmd.Dir = b.SrcPath()
-				cmd.Stdout, cmd.Stderr = b.Output()
+				cmd.Stdout, cmd.Stderr = runbook.OutputFromCtx(ctx)
 
 				cmd.Env = append(cmd.Env, b.Environ()...)
 				cmd.Env = append(cmd.Env, fmt.Sprintf("PATCHFILE=%s\n", patch))

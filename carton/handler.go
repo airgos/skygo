@@ -6,7 +6,6 @@ package carton
 
 import (
 	"context"
-	"io"
 
 	"merge/fetch"
 	"merge/runbook"
@@ -44,8 +43,6 @@ type BuildYard interface {
 	// Environ returns a slice of strings representing the environment,
 	// in the form "key=value".
 	Environ() []string
-
-	Output() (stdout, stderr io.Writer)
 }
 
 // Builder is the interface to build a carton
@@ -72,9 +69,6 @@ type Builder interface {
 
 	// Return fetch state
 	Resource() *fetch.Resource
-
-	// SetOutput set stdout, stderr. Runbook's task need it
-	SetOutput(stdout, stderr io.Writer)
 
 	WorkPath() string
 	BuildYard

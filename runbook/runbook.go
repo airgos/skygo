@@ -8,6 +8,7 @@ import (
 	"container/list"
 	"context"
 	"errors"
+	"io"
 	"sync"
 	"sync/atomic"
 
@@ -241,4 +242,27 @@ func (s *Stage) Play(ctx context.Context) error {
 		return s.tasks.Play(ctx, s.runbook.runtime)
 	}
 	return nil
+}
+
+type output struct {
+	stdout, stderr io.Writer
+}
+
+type outToken string
+
+// CtxWithOutput return a copy of parent ctx and associate with stdout & stderr
+func CtxWithOutput(ctx context.Context, stdout, stderr io.Writer) context.Context {
+
+	out := output{
+		stdout: stdout,
+		stderr: stderr,
+	}
+	return context.WithValue(ctx, outToken("output"), out)
+}
+
+// OutputFromCtx extract stdout & stderr from context
+func OutputFromCtx(ctx context.Context) (stdout, stderr io.Writer) {
+
+	out := ctx.Value(outToken("output")).(output)
+	return out.stdout, out.stderr
 }

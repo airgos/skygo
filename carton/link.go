@@ -7,7 +7,6 @@ package carton
 import (
 	"context"
 	"fmt"
-	"io"
 	"merge/fetch"
 	"merge/runbook"
 	"runtime"
@@ -32,7 +31,6 @@ func (l *link) FilePath() []string                  { return l.h.FilePath() }
 func (l *link) BuildDepends(dep ...string) []string { return l.h.BuildDepends() }
 func (l *link) Depends(dep ...string) []string      { return l.h.Depends() }
 func (l *link) Runbook() *runbook.Runbook           { return l.runbook }
-func (l *link) Output() (stdout, stderr io.Writer)  { return l.h.Output() }
 func (l *link) String() string                      { return l.h.String() }
 
 func (l *link) Clean(ctx context.Context, force bool) error {
@@ -41,10 +39,6 @@ func (l *link) Clean(ctx context.Context, force bool) error {
 
 func (l *link) Environ() []string {
 	return append(l.h.Environ(), fmt.Sprintf("PN=%s", l.alias))
-}
-
-func (l *link) SetOutput(stdout, stderr io.Writer) {
-	l.h.SetOutput(stdout, stderr)
 }
 
 // Provide create link to provider
