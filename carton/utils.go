@@ -7,6 +7,7 @@ package carton
 import (
 	"context"
 	"fmt"
+	"merge/log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -51,10 +52,11 @@ func Patch(ctx context.Context, b Builder) error {
 		case <-ctx.Done():
 		default:
 
-			// TODO: log
 			if strings.HasSuffix(fpath, ".diff") || strings.HasSuffix(fpath, ".patch") {
+
+				log.Trace("To apply patch %s, fpath")
+
 				patch := filepath.Join(wd, fpath)
-				fmt.Printf("Apply patch file %s\n", patch)
 
 				cmd := exec.CommandContext(ctx, "/bin/bash", "-c", patchcmd)
 				cmd.Dir = b.SrcPath()

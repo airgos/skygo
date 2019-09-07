@@ -7,6 +7,7 @@ package carton
 import (
 	"context"
 	"fmt"
+	"merge/log"
 	"runtime"
 	"sync"
 )
@@ -80,7 +81,12 @@ func addVirtual(carton Builder, target, file string) {
 // Update find the carton and then update it in callback
 func Update(name string, m func(Modifier)) {
 
-	if carton, ok := inventory[name]; ok && m != nil {
+	carton, ok := inventory[name]
+	if !ok {
+		log.Warning("carton %s is not found for updating", name)
+		return
+	}
+	if m != nil {
 
 		_, file, _, _ := runtime.Caller(1)
 		updateNum++
@@ -93,6 +99,7 @@ func Update(name string, m func(Modifier)) {
 			}
 		}()
 	}
+
 }
 
 // Find find the carton by name

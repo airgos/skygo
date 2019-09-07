@@ -17,6 +17,7 @@ import (
 
 	"merge/config"
 	"merge/fetch"
+	"merge/log"
 	"merge/runbook"
 )
 
@@ -198,9 +199,12 @@ func (c *Carton) SrcPath() string {
 				c.srcpath = d
 				return d
 			}
+
+			if len(fpaths) > 1 {
+				log.Warning("Don't know which directory should be chosen for SrcPath. Please set it explicitily")
+			}
 		}
 	}
-	// TODO: print log to tell user to set Src explicitily
 	return ""
 }
 

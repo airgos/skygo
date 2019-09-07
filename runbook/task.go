@@ -15,6 +15,8 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+
+	"merge/log"
 )
 
 // Runtime implement runtime method
@@ -63,8 +65,7 @@ func (t *TaskSet) Add(key interface{}, task interface{}) (*TaskSet, error) {
 	v := task
 	if _, ok := t.set[key]; ok {
 
-		// TODO: use log
-		fmt.Printf("Task(%s) added: %v\n", t.routine, task)
+		log.Error("Task(%s) added: %v\n", t.routine, task)
 		return t, ErrTaskAdded
 	}
 
@@ -143,7 +144,7 @@ func (t *TaskSet) runtask(ctx context.Context, task interface{}, r Runtime) (e e
 // Run the TaskCmd, before run, it does:
 // Locate tc.name under runtime GetFilePath(), if found, it's script file, else it's script string
 // If script have function @routine, append routine name
-func (tc *TaskCmd) Run(ctx context.Context, tr Runtime, kv ...string) error {
+func (tc *TaskCmd) Run(ctx context.Context, tr Runtime) error {
 
 	var r io.Reader
 	routine := tc.routine
@@ -183,7 +184,7 @@ func (tc *TaskCmd) Run(ctx context.Context, tr Runtime, kv ...string) error {
 
 	}
 	cmd.Env = append(cmd.Env, tr.Environ()...)
-	cmd.Env = append(cmd.Env, kv...)
+	// cmd.Env = append(cmd.Env, kv...)
 
 	if e := cmd.Run(); e != nil {
 		return fmt.Errorf("Runbook: %s", e)

@@ -10,6 +10,8 @@ import (
 	"errors"
 	"sync"
 	"sync/atomic"
+
+	"merge/log"
 )
 
 // Error used by Runbook
@@ -150,6 +152,8 @@ func (rb *Runbook) Perform(ctx context.Context) error {
 
 // Play run stage's tasks or the independent task
 func (rb *Runbook) Play(ctx context.Context, name string) error {
+
+	log.Trace("Play stage or task %s", name) // TODO: which carton
 	if s := rb.Stage(name); s != nil {
 		return s.Play(ctx)
 	}

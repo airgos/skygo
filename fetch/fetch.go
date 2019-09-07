@@ -9,12 +9,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"sort"
 	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
+
+	"merge/log"
 )
 
 // Resource represent state of fetch
@@ -133,8 +134,7 @@ func (fetch *Resource) Versions() []string {
 func (fetch *Resource) Prefer(version string) {
 
 	if atomic.LoadUint32(&fetch.done) == 1 {
-		// TODO: log
-		fmt.Fprintf(os.Stdout, "Try to set preferred version again!")
+		log.Warning("Try to set preferred version again!")
 		return
 	}
 
@@ -175,7 +175,7 @@ func (fetch *Resource) Download(ctx context.Context) error {
 	var wg sync.WaitGroup
 	res, _ := fetch.Selected()
 	if res == nil {
-		// TODO: warning not found
+		log.Warning("Resource don't hold any source URL") // TODO: owner
 		return nil
 	}
 

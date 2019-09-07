@@ -8,14 +8,16 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"merge/carton"
 	"os"
+
+	"merge/carton"
+	"merge/log"
 )
 
 // App implement interface Application
 type App struct {
-	name string
-	// TODO: -log
+	name     string
+	LogLevel string `flag:"loglevel" help:"Log Level: trace, info, warning(default), error"`
 }
 
 // New create top Application
@@ -43,12 +45,18 @@ Available commands are:
 		fmt.Fprintf(f.Output(), "  %s : %s\n", c.Name(), c.Summary())
 	}
 
-	// fmt.Fprintf(f.Output(), "\n%s flags are:\n", app.Name())
-	// f.PrintDefaults()
+	fmt.Fprintf(f.Output(), "\n%s flags are:\n", app.Name())
+	f.PrintDefaults()
 }
 
 // Run takes the args after top level flag processing, and invokes the correct sub command
 func (app *App) Run(ctx context.Context, args ...string) error {
+
+	if app.LogLevel != "" {
+		if !log.SetLevel(app.LogLevel) {
+			return commandLineErrorf("Unknown log level %s", app.LogLevel)
+		}
+	}
 
 	if len(args) == 0 {
 		return commandLineErrorf("command must be supplied")
