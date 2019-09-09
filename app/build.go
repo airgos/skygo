@@ -8,15 +8,13 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"os"
 
 	"merge/carton"
-	"merge/runbook"
 )
 
 type build struct {
 	NoDeps bool   `flag:"nodeps" help:"don't check dependency"`
-	Exec   string `flag:"play" help:"one indenpent task or stage name"`
+	Target string `flag:"play" help:"one indenpent task or stage name"`
 	// TODO: -HEAD, -interactive
 }
 
@@ -35,27 +33,5 @@ func (b *build) Run(ctx context.Context, args ...string) error {
 		return commandLineErrorf("carton name must be supplied")
 	}
 
-	c, _, e := carton.Find(args[0])
-	if e != nil {
-		return fmt.Errorf("carton %s is %s", args[0], e)
-	}
-
-	rb := c.Runbook()
-	arg := new(runbook.Arg)
-	arg.Stdout = os.Stdout
-	arg.Stderr = os.Stderr
-	arg.Owner = args[0]
-	arg.Direnv = c.(runbook.DirEnv)
-
-	ctx = runbook.NewContext(ctx, arg)
-	if b.Exec != "" {
-		return rb.Play(ctx, b.Exec)
-	} else if b.NoDeps {
-		return rb.Perform(ctx)
-	}
-
-	// w1, e := os.OpenFile("/dev/ttys002", os.O_RDWR, 0766)
-	// w2, _ := os.OpenFile("/dev/ttys008", os.O_RDWR, 0766)
-	// return carton.NewLoad(2, args[0]).SetOutput(0, w1, w1).SetOutput(1, w2, w2).Run(ctx)
-	return carton.NewLoad(0, args[0]).Run(ctx)
+	return carton.NewLoad(0).Run(ctx, args[0], b.Target, b.NoDeps)
 }
