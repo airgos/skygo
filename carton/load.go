@@ -8,6 +8,7 @@ import (
 	"context"
 	"io"
 	"runtime"
+	"strings"
 	"sync"
 
 	"merge/runbook"
@@ -17,24 +18,25 @@ import (
 type Load struct {
 	ch     chan *runbook.Arg
 	arg    []*runbook.Arg
-	carton string
 	works  int
 	cancel context.CancelFunc
-	err    error
+
+	// err is allowed to set only once
+	once sync.Once
+	err  error
 }
 
 // NewLoad create load to build carton
 // num represent how many loader work. if its value is 0, it will use default value
-func NewLoad(num int, carton string) *Load {
+func NewLoad(num int) *Load {
 
 	if num == 0 {
 		num = runtime.NumCPU()
 	}
 	load := Load{
-		ch:     make(chan *runbook.Arg, num),
-		arg:    make([]*runbook.Arg, num),
-		carton: carton,
-		works:  num,
+		ch:    make(chan *runbook.Arg, num),
+		arg:   make([]*runbook.Arg, num),
+		works: num,
 	}
 	for i := 0; i < num; i++ {
 		arg := new(runbook.Arg)
@@ -61,48 +63,79 @@ func (l *Load) SetOutput(index int, stdout, stderr io.Writer) *Load {
 	return l
 }
 
-func (l *Load) run(ctx context.Context, carton string) {
+func (l *Load) perform(ctx context.Context, carton Builder, target string) (err error) {
+
+	arg := l.get()
+	arg.Owner = carton.Provider()
+	arg.Direnv = carton.(runbook.DirEnv)
+
+	ctx = runbook.NewContext(ctx, arg)
+	if target != "" {
+		err = carton.Runbook().Play(ctx, target)
+	} else {
+		err = carton.Runbook().Perform(ctx)
+	}
+	l.put(arg)
+	return
+}
+
+func (l *Load) run(ctx context.Context, carton, target string) {
 	var wg sync.WaitGroup
 
-	b, _, _ := Find(carton)
+	b, _, err := Find(carton)
+	if err != nil {
+		l.err = err
+		return
+	}
+
 	deps := b.BuildDepends()
 	required := b.Depends()
 	deps = append(deps, required...)
 
 	wg.Add(len(deps))
 	for _, d := range deps {
-		go func(ctx context.Context, carton string) {
+		carton := d
+		target := ""
+		if i := strings.LastIndex(d, "@"); i >= 0 {
+			carton, target = d[:i], d[i+1:]
+		}
+		go func(ctx context.Context, carton, target string) {
 
 			select {
 			default:
-				l.run(ctx, carton)
+				l.run(ctx, carton, target)
 			case <-ctx.Done():
 			}
 			wg.Done()
-		}(ctx, d)
+		}(ctx, carton, target)
 	}
 	wg.Wait()
 
-	arg := l.get()
-	arg.Owner = carton
-	arg.Direnv = b.(runbook.DirEnv)
-
-	ctx = runbook.NewContext(ctx, arg)
-	e := b.Runbook().Perform(ctx)
-	l.put(arg)
-	if e != nil {
+	err = l.perform(ctx, b, target)
+	if err != nil {
 		l.cancel()
 		if l.err == nil {
-			// BUG: l.err can be overwritten
-			l.err = e
+			l.once.Do(func() {
+				l.err = err
+			})
 		}
 	}
 }
 
 // Run start loading
-func (l *Load) Run(ctx context.Context) error {
+func (l *Load) Run(ctx context.Context, carton, target string, nodeps bool) error {
 	ctx, cancel := context.WithCancel(ctx)
 	l.cancel = cancel
-	l.run(ctx, l.carton)
+
+	if nodeps {
+
+		b, _, err := Find(carton)
+		if err != nil {
+			return err
+		}
+		return l.perform(ctx, b, target)
+	}
+
+	l.run(ctx, carton, target)
 	return l.err
 }
