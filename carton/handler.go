@@ -32,19 +32,6 @@ type Modifier interface {
 	Resource() *fetch.Resource
 }
 
-// BuildYard is the interface to provide environment where Builder work
-type BuildYard interface {
-	// SrcPath return  directory of source code
-	SrcPath() string
-
-	// FilePath return a collection of directory that's be used for locating url scheme file:
-	FilePath() []string
-
-	// Environ returns a slice of strings representing the environment,
-	// in the form "key=value".
-	Environ() []string
-}
-
 // Builder is the interface to build a carton
 type Builder interface {
 
@@ -70,8 +57,7 @@ type Builder interface {
 	// Return fetch state
 	Resource() *fetch.Resource
 
-	WorkPath() string
-	BuildYard
+	runbook.DirEnv
 
 	// Clean cleanup
 	// if force is true, remove work path; else try to run independent task clean
