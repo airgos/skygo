@@ -90,8 +90,7 @@ func (c *Carton) Init(file string, arg Modifier, modify func(arg Modifier)) {
 	add(c, file, func() {
 		c.provider = []string{}
 		c.environ = make(map[string]string)
-		b := arg.(Builder)
-		c.fetch = fetch.NewFetch(config.DownloadDir(), b.WorkPath(), b.FilePath())
+		c.fetch = fetch.NewFetch(config.DownloadDir())
 
 		c.file = []string{}
 		c.filepath = []string{}

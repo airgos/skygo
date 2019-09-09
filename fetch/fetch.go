@@ -16,13 +16,14 @@ import (
 	"sync/atomic"
 
 	"merge/log"
+	"merge/runbook"
 )
 
 // Resource represent state of fetch
 type Resource struct {
+	dd string // download path.absolute directory path
+
 	resource map[string]SrcURL
-	dd, wd   string   // absolute directory path
-	filepath []string // search dir list for scheme file://
 
 	// preferred version
 	// print error log if prefer version is set again
@@ -51,13 +52,13 @@ func (cmd *fetchCmd) Download(ctx context.Context, res *Resource) error {
 
 	switch m := cmd.fetch.(type) {
 
-	// for http,https,vscGit
-	case func(context.Context, []string, string, string) error:
-		return m(ctx, res.filepath, res.wd, cmd.url)
-
 	// scheme file: handler
-	case func(context.Context, string, string, string) error:
-		return m(ctx, res.dd, res.wd, cmd.url)
+	case func(context.Context, string) error:
+		return m(ctx, cmd.url)
+
+	// for http,https,vscGit
+	case func(context.Context, string, string) error:
+		return m(ctx, res.dd, cmd.url)
 
 	default:
 		return errors.New("Unknown fetch command")
@@ -65,13 +66,11 @@ func (cmd *fetchCmd) Download(ctx context.Context, res *Resource) error {
 }
 
 // NewFetch create fetch state
-func NewFetch(dd, wd string, filepath []string) *Resource {
+func NewFetch(dd string) *Resource {
 
 	fetch := new(Resource)
 
-	fetch.wd = wd
 	fetch.dd = dd
-	fetch.filepath = filepath
 	fetch.resource = make(map[string]SrcURL)
 	return fetch
 }
@@ -173,9 +172,11 @@ func (fetch *Resource) Selected() (*SrcURL, string) {
 func (fetch *Resource) Download(ctx context.Context) error {
 
 	var wg sync.WaitGroup
+	arg, _ := runbook.FromContext(ctx)
+
 	res, _ := fetch.Selected()
 	if res == nil {
-		log.Warning("Resource don't hold any source URL") // TODO: owner
+		log.Warning("%s don't hold any source URL", arg.Owner)
 		return nil
 	}
 

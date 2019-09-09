@@ -11,6 +11,8 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+
+	"merge/runbook"
 )
 
 // inspired by go/src/cmd/go/internal/get/vcs.go
@@ -161,7 +163,10 @@ func (vcs *vcsCmd) syncTag() error {
 	return nil
 }
 
-func vcsFetch(ctx context.Context, dd, wd string, url string) error {
+func vcsFetch(ctx context.Context, dd string, url string) error {
+
+	arg, _ := runbook.FromContext(ctx)
+	wd := arg.Direnv.WorkPath()
 	repo := url
 	tag := ""
 

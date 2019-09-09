@@ -6,10 +6,8 @@ package fetch
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
-	"merge/fetch/utils"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -17,6 +15,9 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+
+	"merge/fetch/utils"
+	"merge/runbook"
 )
 
 //TODO:
@@ -26,11 +27,13 @@ import (
 // don't unpack again if it's done
 
 // support scheme http and https. if file is archiver, unpack it
-func httpAndUnpack(ctx context.Context, dd, wd string, url string) error {
+func httpAndUnpack(ctx context.Context, dd string, url string) error {
+	arg, _ := runbook.FromContext(ctx)
+	wd := arg.Direnv.WorkPath()
 
 	slice := strings.Split(url, "#")
 	if len(slice) != 2 {
-		return errors.New("URL have no checksum") // TODO: which carton
+		return fmt.Errorf("%s - URL[%s] have no checksum", arg.Owner)
 	}
 	u := slice[0]
 

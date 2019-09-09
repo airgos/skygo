@@ -6,16 +6,21 @@ package fetch
 
 import (
 	"context"
-	"merge/fetch/utils"
 	"os"
 	"path/filepath"
+
+	"merge/fetch/utils"
+	"merge/runbook"
 )
 
-func file(ctx context.Context, filePath []string, wd string, url string) error {
+func file(ctx context.Context, url string) error {
+
+	arg, _ := runbook.FromContext(ctx)
+	wd := arg.Direnv.WorkPath()
 
 	// skip file://
 	url = url[7:]
-	for _, d := range filePath {
+	for _, d := range arg.Direnv.FilePath() {
 
 		path := filepath.Join(d, url)
 		fileinfo, err := os.Stat(path)
