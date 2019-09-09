@@ -260,10 +260,28 @@ func (s *Stage) Play(ctx context.Context) error {
 
 // Arg holds arguments for runbook
 type Arg struct {
-	Stdout, Stderr io.Writer
-	Owner          string // who own this
-
+	Owner  string // who own this
 	Direnv DirEnv
+
+	// underline IO, call method Output() to get IO
+	stdout, stderr io.Writer
+
+	// help to wrap IO based on underline IO
+	// example: use io.MultiWriter to duplicates its writes
+	output func() (stdout, stderr io.Writer)
+}
+
+// Output return IO stdout & stderr
+func (arg *Arg) Output() (stdout, stderr io.Writer) {
+	if arg.output != nil {
+		return arg.output()
+	}
+	return arg.stdout, arg.stderr
+}
+
+// SetOutput set underline IO stdout & stderr
+func (arg *Arg) SetOutput(stdout, stderr io.Writer) {
+	arg.stdout, arg.stderr = stdout, stderr
 }
 
 type argToken string

@@ -63,7 +63,7 @@ func Patch(ctx context.Context, b Builder) error {
 				cmd := exec.CommandContext(ctx, "/bin/bash", "-c", patchcmd)
 				cmd.Dir = b.SrcPath()
 				arg, _ := runbook.FromContext(ctx)
-				cmd.Stdout, cmd.Stderr = arg.Stdout, arg.Stderr
+				cmd.Stdout, cmd.Stderr = arg.Output()
 
 				cmd.Env = append(cmd.Env, b.Environ()...)
 				cmd.Env = append(cmd.Env, fmt.Sprintf("PATCHFILE=%s\n", patch))

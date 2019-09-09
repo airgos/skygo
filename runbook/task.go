@@ -166,7 +166,7 @@ func (tc *TaskCmd) Run(ctx context.Context) error {
 	}
 
 	cmd := exec.CommandContext(ctx, "/bin/bash")
-	cmd.Stdout, cmd.Stderr = arg.Stdout, arg.Stderr
+	cmd.Stdout, cmd.Stderr = arg.Output()
 	cmd.Dir = arg.Direnv.SrcPath()
 
 	if routine != "" {
