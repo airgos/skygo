@@ -41,11 +41,16 @@ func (b *build) Run(ctx context.Context, args ...string) error {
 	}
 
 	rb := c.Runbook()
+	arg := new(runbook.Arg)
+	arg.Stdout = os.Stdout
+	arg.Stderr = os.Stderr
+	arg.Owner = args[0]
+	arg.Direnv = c.(runbook.DirEnv)
+
+	ctx = runbook.NewContext(ctx, arg)
 	if b.Exec != "" {
-		ctx = runbook.CtxWithOutput(ctx, os.Stdout, os.Stderr)
 		return rb.Play(ctx, b.Exec)
 	} else if b.NoDeps {
-		ctx = runbook.CtxWithOutput(ctx, os.Stdout, os.Stderr)
 		return rb.Perform(ctx)
 	}
 

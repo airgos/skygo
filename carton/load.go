@@ -7,7 +7,6 @@ package carton
 import (
 	"context"
 	"io"
-	"os"
 	"runtime"
 	"sync"
 
@@ -16,16 +15,12 @@ import (
 
 // Load represent state of load
 type Load struct {
-	ch     chan *resource
-	res    []*resource
+	ch     chan *runbook.Arg
+	arg    []*runbook.Arg
 	carton string
 	works  int
 	cancel context.CancelFunc
 	err    error
-}
-
-type resource struct {
-	stdout, stderr io.Writer
 }
 
 // NewLoad create load to build carton
@@ -36,33 +31,33 @@ func NewLoad(num int, carton string) *Load {
 		num = runtime.NumCPU()
 	}
 	load := Load{
-		ch:     make(chan *resource, num),
-		res:    make([]*resource, num),
+		ch:     make(chan *runbook.Arg, num),
+		arg:    make([]*runbook.Arg, num),
 		carton: carton,
 		works:  num,
 	}
 	for i := 0; i < num; i++ {
-		res := new(resource)
-		load.res[i] = res
-		load.ch <- res
+		arg := new(runbook.Arg)
+		load.arg[i] = arg
+		load.ch <- arg
 	}
 
 	return &load
 }
 
-func (l *Load) get() *resource {
+func (l *Load) get() *runbook.Arg {
 	return <-l.ch
 }
 
-func (l *Load) put(res *resource) {
-	l.ch <- res
+func (l *Load) put(arg *runbook.Arg) {
+	l.ch <- arg
 }
 
 // SetOutput assign stdout & stderr for one load
 // It's not safe to invoke during loading
 func (l *Load) SetOutput(index int, stdout, stderr io.Writer) *Load {
-	l.res[index].stderr = stderr
-	l.res[index].stdout = stdout
+	l.arg[index].Stderr = stderr
+	l.arg[index].Stdout = stdout
 	return l
 }
 
@@ -87,11 +82,14 @@ func (l *Load) run(ctx context.Context, carton string) {
 		}(ctx, d)
 	}
 	wg.Wait()
-	res := l.get()
 
-	ctx = runbook.CtxWithOutput(ctx, os.Stdout, os.Stderr)
+	arg := l.get()
+	arg.Owner = carton
+	arg.Direnv = b.(runbook.DirEnv)
+
+	ctx = runbook.NewContext(ctx, arg)
 	e := b.Runbook().Perform(ctx)
-	l.put(res)
+	l.put(arg)
 	if e != nil {
 		l.cancel()
 		if l.err == nil {

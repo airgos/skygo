@@ -27,7 +27,7 @@ func NewImage(name string, m func(i *Image)) {
 	// inherits i.Carton.Init
 	i.Init(file, i, func(arg Modifier) {
 
-		rb := runbook.NewRunbook(i)
+		rb := runbook.NewRunbook()
 		rb.PushFront(PREPARE).
 			InsertAfter(BUILD).
 			InsertAfter(INSTALL)

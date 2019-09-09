@@ -23,11 +23,26 @@ var (
 	ErrUnknownTask     = errors.New("Unkown Task")
 )
 
+// DirEnv is the interface to provide environment where Builder work
+type DirEnv interface {
+	// SrcPath return  directory of source code
+	SrcPath() string
+
+	// WorkPath return working directory
+	WorkPath() string
+
+	// FilePath return a collection of directory that's be used for locating local file
+	FilePath() []string
+
+	// Environ returns a slice of strings representing the environment,
+	// in the form "key=value".
+	Environ() []string
+}
+
 // Runbook consists of a series of stage and a independent taskset
 type Runbook struct {
 	head    *list.List
 	taskset *TaskSet
-	runtime Runtime
 }
 
 // Stage is member of Runbook, and hold a set of tasks with differnt weight.
@@ -45,20 +60,18 @@ type Stage struct {
 }
 
 // NewRunbook create a Runbook
-func NewRunbook(runtime Runtime) *Runbook {
+func NewRunbook() *Runbook {
 	this := new(Runbook)
 	this.head = list.New()
-	this.runtime = runtime
 	this.taskset = newTaskSet()
 	return this
 }
 
 // Clone clone Runbook w/ different runtime
-func (rb *Runbook) Clone(runtime Runtime) *Runbook {
+func (rb *Runbook) Clone() *Runbook {
 	n := Runbook{
 		head:    rb.head,
 		taskset: rb.taskset,
-		runtime: runtime,
 	}
 	return &n
 }
@@ -84,7 +97,7 @@ func (rb *Runbook) RunbookInfo() ([]string, []int, []string) {
 // PushBack new a stage, and push at the end
 func (rb *Runbook) PushBack(name string) *Stage {
 
-	stage := newStage(name, rb.runtime)
+	stage := newStage(name)
 	stage.runbook = rb
 	stage.e = rb.head.PushBack(stage)
 
@@ -94,7 +107,7 @@ func (rb *Runbook) PushBack(name string) *Stage {
 // PushFront new a stage, and push at the front
 func (rb *Runbook) PushFront(name string) *Stage {
 
-	stage := newStage(name, rb.runtime)
+	stage := newStage(name)
 	stage.runbook = rb
 	stage.e = rb.head.PushFront(stage)
 
@@ -132,7 +145,7 @@ func (rb *Runbook) TaskSet() *TaskSet {
 
 // RunTask play one task in dependent taskset
 func (rb *Runbook) RunTask(ctx context.Context, name string) error {
-	return rb.taskset.Run(ctx, name, rb.runtime)
+	return rb.taskset.Run(ctx, name)
 }
 
 // Perform carry out all stages in the runbook
@@ -154,14 +167,16 @@ func (rb *Runbook) Perform(ctx context.Context) error {
 // Play run stage's tasks or the independent task
 func (rb *Runbook) Play(ctx context.Context, name string) error {
 
-	log.Trace("Play stage or task %s", name) // TODO: which carton
+	arg, _ := FromContext(ctx)
+	log.Trace("Play stage or task %s held by %s", name, arg.Owner)
+
 	if s := rb.Stage(name); s != nil {
 		return s.Play(ctx)
 	}
 	return rb.RunTask(ctx, name)
 }
 
-func newStage(name string, runtime Runtime) *Stage {
+func newStage(name string) *Stage {
 
 	stage := Stage{
 		name:  name,
@@ -176,7 +191,7 @@ func newStage(name string, runtime Runtime) *Stage {
 // Return new stage
 func (s *Stage) InsertAfter(name string) *Stage {
 
-	n := newStage(name, s.runbook.runtime)
+	n := newStage(name)
 	n.runbook = s.runbook
 	n.e = s.runbook.head.InsertAfter(n, s.e)
 
@@ -187,7 +202,7 @@ func (s *Stage) InsertAfter(name string) *Stage {
 // Return new stage
 func (s *Stage) InsertBefore(name string) *Stage {
 
-	n := newStage(name, s.runbook.runtime)
+	n := newStage(name)
 	n.runbook = s.runbook
 	n.e = s.runbook.head.InsertBefore(n, s.e)
 
@@ -233,36 +248,34 @@ func (s *Stage) Play(ctx context.Context) error {
 
 	// TODO:
 	// read record to check whether it's executed last time
-	// Need: vaule of PWD
 
 	s.m.Lock()
 	defer s.m.Unlock()
 	if s.executed == 0 {
 		defer atomic.StoreUint32(&s.executed, 1)
-		return s.tasks.Play(ctx, s.runbook.runtime)
+		return s.tasks.Play(ctx)
 	}
 	return nil
 }
 
-type output struct {
-	stdout, stderr io.Writer
+// Arg holds arguments for runbook
+type Arg struct {
+	Stdout, Stderr io.Writer
+	Owner          string // who own this
+
+	Direnv DirEnv
 }
 
-type outToken string
+type argToken string
 
-// CtxWithOutput return a copy of parent ctx and associate with stdout & stderr
-func CtxWithOutput(ctx context.Context, stdout, stderr io.Writer) context.Context {
+// NewContext returns a new Context that carries value arg
+func NewContext(ctx context.Context, arg *Arg) context.Context {
 
-	out := output{
-		stdout: stdout,
-		stderr: stderr,
-	}
-	return context.WithValue(ctx, outToken("output"), out)
+	return context.WithValue(ctx, argToken("arg"), arg)
 }
 
-// OutputFromCtx extract stdout & stderr from context
-func OutputFromCtx(ctx context.Context) (stdout, stderr io.Writer) {
-
-	out := ctx.Value(outToken("output")).(output)
-	return out.stdout, out.stderr
+// FromContext returns the Arg value stored in ctx, if any
+func FromContext(ctx context.Context) (*Arg, bool) {
+	arg, ok := ctx.Value(argToken("arg")).(*Arg)
+	return arg, ok
 }

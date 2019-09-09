@@ -69,7 +69,7 @@ func NewCarton(name string, m func(c *Carton)) {
 
 	c.Init(file, c, func(arg Modifier) {
 
-		chain := runbook.NewRunbook(c)
+		chain := runbook.NewRunbook()
 		p, _ := chain.PushFront(FETCH).AddTask(0, func(ctx context.Context) error {
 			return c.fetch.Download(ctx)
 		})
@@ -281,7 +281,7 @@ func (c *Carton) Clean(ctx context.Context, force bool) error {
 	}
 	tset := c.Runbook().TaskSet()
 	if tset.Has("clean") {
-		return tset.Run(ctx, "clean", c)
+		return tset.Run(ctx, "clean")
 	}
 	return runbook.ErrUnknownTask
 }

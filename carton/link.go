@@ -17,9 +17,8 @@ import (
 // designed for virtual carton and multiple provider carton
 // it only implements Builder interface
 type link struct {
-	alias   string
-	runbook *runbook.Runbook
-	h       Builder
+	alias string
+	h     Builder
 }
 
 func (l *link) Provider() string                    { return l.h.Provider() }
@@ -30,7 +29,7 @@ func (l *link) WorkPath() string                    { return l.h.WorkPath() }
 func (l *link) FilePath() []string                  { return l.h.FilePath() }
 func (l *link) BuildDepends(dep ...string) []string { return l.h.BuildDepends() }
 func (l *link) Depends(dep ...string) []string      { return l.h.Depends() }
-func (l *link) Runbook() *runbook.Runbook           { return l.runbook }
+func (l *link) Runbook() *runbook.Runbook           { return l.h.Runbook() }
 func (l *link) String() string                      { return l.h.String() }
 
 func (l *link) Clean(ctx context.Context, force bool) error {
@@ -51,11 +50,9 @@ func (c *Carton) Provide(provider ...string) {
 		panic(fmt.Errorf("%s: must add provider in init func", file))
 	}
 
-	rb := c.Runbook()
 	for _, name := range provider {
 
 		link := link{h: c, alias: name}
-		link.runbook = rb.Clone(&link)
 		addVirtual(&link, name, file)
 		c.provider = append(c.provider, name)
 	}
