@@ -30,6 +30,7 @@ import (
 func httpAndUnpack(ctx context.Context, dd string, url string) error {
 	arg, _ := runbook.FromContext(ctx)
 	wd := arg.Direnv.WorkPath()
+	stdout, _ := arg.Output()
 
 	slice := strings.Split(url, "#")
 	if len(slice) != 2 {
@@ -40,12 +41,13 @@ func httpAndUnpack(ctx context.Context, dd string, url string) error {
 	base := filepath.Base(u)
 	fpath := filepath.Join(dd, base)
 
+	fmt.Fprintf(stdout, "To download %s\n", u)
 	if e := download(u, slice[1], fpath); e != nil {
 		return e
 	}
 
 	if unar := utils.NewUnarchive(fpath); unar != nil {
-		fmt.Printf("unarchive %s\n", fpath)
+		fmt.Fprintf(stdout, "unarchive %s\n", fpath)
 		if e := unar.Unarchive(fpath, wd); e != nil {
 			return fmt.Errorf("unarchive %s failed:%s", base, e.Error())
 		}
