@@ -124,10 +124,10 @@ func (rb *Runbook) Stage(name string) (stage *Stage) {
 	for e := l.Front(); e != nil; e = e.Next() {
 		stage = e.Value.(*Stage)
 		if stage.name == name {
-			break
+			return stage
 		}
 	}
-	return
+	return nil
 }
 
 // Head return the first stage in the runbook
