@@ -247,6 +247,14 @@ func (s *Stage) DelTask(weight int) {
 	s.tasks.Del(weight)
 }
 
+// Reset clear executed status, then s.Play can be run again
+func (s *Stage) Reset() {
+
+	s.m.Lock()
+	defer s.m.Unlock()
+	atomic.StoreUint32(&s.executed, 0)
+}
+
 // Play perform tasks in the stage
 func (s *Stage) Play(ctx context.Context) error {
 
