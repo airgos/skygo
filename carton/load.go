@@ -7,6 +7,7 @@ package carton
 import (
 	"context"
 	"io"
+	"os"
 	"runtime"
 	"strings"
 	"sync"
@@ -68,6 +69,9 @@ func (l *Load) perform(ctx context.Context, carton Builder, target string, nodep
 	arg.Owner = carton.Provider()
 	arg.Direnv = carton.(runbook.DirEnv)
 
+	if nodeps {
+		arg.SetOutput(os.Stdout, os.Stderr)
+	}
 	ctx = runbook.NewContext(ctx, arg)
 
 	if nodeps && target != "" {
