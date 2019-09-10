@@ -5,7 +5,9 @@
 package carton
 
 import (
+	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"os"
 	"runtime"
@@ -17,14 +19,18 @@ import (
 
 // Load represent state of load
 type Load struct {
-	ch     chan *runbook.Arg
-	arg    []*runbook.Arg
-	works  int
+	works int
+	ch    chan int
+
+	arg  []*runbook.Arg
+	bufs []*bytes.Buffer
+
 	cancel context.CancelFunc
 
 	// err is allowed to set only once
-	once sync.Once
-	err  error
+	once  sync.Once
+	err   error
+	index int // which load occurs error
 }
 
 // NewLoad create load to build carton
@@ -35,37 +41,46 @@ func NewLoad(num int) *Load {
 		num = runtime.NumCPU()
 	}
 	load := Load{
-		ch:    make(chan *runbook.Arg, num),
+		ch:    make(chan int, num),
 		arg:   make([]*runbook.Arg, num),
+		bufs:  make([]*bytes.Buffer, num),
 		works: num,
 	}
 	for i := 0; i < num; i++ {
 		arg := new(runbook.Arg)
 		load.arg[i] = arg
-		load.ch <- arg
+
+		load.ch <- i
+
+		buf := new(bytes.Buffer)
+		arg.SetOutput(nil, buf)
+		load.bufs[i] = buf
 	}
 
 	return &load
 }
 
-func (l *Load) get() *runbook.Arg {
+func (l *Load) get() int {
 	return <-l.ch
 }
 
-func (l *Load) put(arg *runbook.Arg) {
-	l.ch <- arg
+func (l *Load) put(index int) {
+	l.ch <- index
 }
 
 // SetOutput assign stdout & stderr for one load
 // It's not safe to invoke during loading
 func (l *Load) SetOutput(index int, stdout, stderr io.Writer) *Load {
-	l.arg[index].SetOutput(stdout, stderr)
+	l.arg[index].SetOutput(stdout,
+		io.MultiWriter(stderr, l.bufs[index]))
 	return l
 }
 
-func (l *Load) perform(ctx context.Context, carton Builder, target string, nodeps bool) (err error) {
+func (l *Load) perform(ctx context.Context, carton Builder, target string,
+	nodeps bool) (index int, err error) {
 
-	arg := l.get()
+	index = l.get()
+	arg := l.arg[index]
 	arg.Owner = carton.Provider()
 	arg.Direnv = carton.(runbook.DirEnv)
 
@@ -74,13 +89,16 @@ func (l *Load) perform(ctx context.Context, carton Builder, target string, nodep
 	}
 	ctx = runbook.NewContext(ctx, arg)
 
+	// reset buffer
+	l.bufs[index].Reset()
+
 	if nodeps && target != "" {
 		err = carton.Runbook().Play(ctx, target)
 	} else {
 		err = carton.Runbook().Perform(ctx, target)
 	}
-	l.put(arg)
-	return
+	l.put(index)
+	return index, err
 }
 
 func (l *Load) run(ctx context.Context, carton, target string) {
@@ -115,14 +133,12 @@ func (l *Load) run(ctx context.Context, carton, target string) {
 	}
 	wg.Wait()
 
-	err = l.perform(ctx, b, target, false)
-	if err != nil {
+	if index, err := l.perform(ctx, b, target, false); err != nil {
 		l.cancel()
-		if l.err == nil {
-			l.once.Do(func() {
-				l.err = err
-			})
-		}
+		l.once.Do(func() {
+			l.err = fmt.Errorf("%s==>\n%s", b.Provider(), err)
+			l.index = index
+		})
 	}
 }
 
@@ -137,9 +153,22 @@ func (l *Load) Run(ctx context.Context, carton, target string, nodeps bool) erro
 		if err != nil {
 			return err
 		}
-		return l.perform(ctx, b, target, true)
+		_, err = l.perform(ctx, b, target, true)
+		return err
 	}
 
 	l.run(ctx, carton, target)
-	return l.err
+	if l.err != nil {
+		return l
+	}
+	return nil
+}
+
+func (l *Load) Error() string {
+
+	var str strings.Builder
+	fmt.Fprintln(&str, l.err)
+	fmt.Fprintf(&str, "\nError log:\n")
+	str.Write(l.bufs[l.index].Bytes())
+	return str.String()
 }
