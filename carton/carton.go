@@ -69,15 +69,24 @@ func NewCarton(name string, m func(c *Carton)) {
 
 	c.Init(file, c, func(arg Modifier) {
 
-		chain := runbook.NewRunbook()
-		p, _ := chain.PushFront(FETCH).AddTask(0, func(ctx context.Context) error {
-			return c.fetch.Download(ctx)
+		rb := runbook.NewRunbook()
+		fetch := rb.PushFront(FETCH)
+		fetch.AddTask(0, func(ctx context.Context) error {
+			return c.fetch.Download(ctx,
+				// reset subsequent stages
+				func() {
+					log.Trace("Reset subsequent stages because fetch found new code")
+					for stage := fetch.Next(); stage != nil; stage = stage.Next() {
+						stage.Reset()
+					}
+				})
 		})
-		p, _ = p.InsertAfter(PATCH).AddTask(0, func(ctx context.Context) error {
+
+		patch, _ := fetch.InsertAfter(PATCH).AddTask(0, func(ctx context.Context) error {
 			return Patch(ctx, c)
 		})
-		p.InsertAfter(PREPARE).InsertAfter(BUILD).InsertAfter(INSTALL)
-		c.runbook = chain
+		patch.InsertAfter(PREPARE).InsertAfter(BUILD).InsertAfter(INSTALL)
+		c.runbook = rb
 
 		m(c)
 	})

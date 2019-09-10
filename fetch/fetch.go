@@ -170,7 +170,8 @@ func (fetch *Resource) Selected() (*SrcURL, string) {
 
 // Download download all source URL held by selected SrcURL
 // Extract automatically if source URL is an archiver, like tar.bz2
-func (fetch *Resource) Download(ctx context.Context) error {
+// if source code is updated, it calls notify
+func (fetch *Resource) Download(ctx context.Context, notify func()) error {
 
 	var wg sync.WaitGroup
 	arg, _ := runbook.FromContext(ctx)
@@ -203,6 +204,10 @@ func (fetch *Resource) Download(ctx context.Context) error {
 	if fetch.failedURL != "" {
 		return fmt.Errorf("failed to fetch %s. Reason: \n\t %s", fetch.failedURL, fetch.failedErr)
 	}
+	// TODO: extend Download to tell source code is updated
+	// if updated && notify != nil {
+	// 	notify()
+	// }
 	return nil
 }
 
