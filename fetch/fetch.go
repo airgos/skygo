@@ -35,6 +35,7 @@ type Resource struct {
 
 	// save only one url failed to fetch
 	failedURL string
+	failedErr error
 	once      sync.Once
 }
 
@@ -191,6 +192,7 @@ func (fetch *Resource) Download(ctx context.Context) error {
 			if err := fetchCmd.Download(ctx, fetch); err != nil {
 				fetch.once.Do(func() {
 					fetch.failedURL = fetchCmd.url
+					fetch.failedErr = err
 					cancel()
 				})
 			}
@@ -199,7 +201,7 @@ func (fetch *Resource) Download(ctx context.Context) error {
 	}
 	wg.Wait()
 	if fetch.failedURL != "" {
-		return fmt.Errorf("failed to fetch %s", fetch.failedURL)
+		return fmt.Errorf("failed to fetch %s. Reason: \n\t %s", fetch.failedURL, fetch.failedErr)
 	}
 	return nil
 }
