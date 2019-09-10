@@ -8,7 +8,10 @@ import (
 	"container/list"
 	"context"
 	"errors"
+	"fmt"
 	"io"
+	"os"
+	"path/filepath"
 	"sync"
 	"sync/atomic"
 
@@ -252,6 +255,31 @@ func (s *Stage) Play(ctx context.Context) error {
 	s.m.Lock()
 	defer s.m.Unlock()
 	if s.executed == 0 {
+
+		arg, _ := FromContext(ctx)
+		dir := filepath.Join(arg.Direnv.WorkPath(), "temp")
+		os.MkdirAll(dir, 0755)
+
+		logo := filepath.Join(dir, s.name+".log")
+		file, err := os.Create(logo)
+		if err != nil {
+			return fmt.Errorf("Failed to create %s", logo)
+		}
+		defer file.Close()
+
+		arg.output = func() (stdout, stderr io.Writer) {
+			stdout = file
+			stderr = file
+			if arg.stdout != nil {
+
+				stdout = io.MultiWriter(arg.stdout, file)
+			}
+			if arg.stderr != nil {
+				stderr = io.MultiWriter(arg.stderr, file)
+			}
+			return
+		}
+
 		defer atomic.StoreUint32(&s.executed, 1)
 		return s.tasks.Play(ctx)
 	}
