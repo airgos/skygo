@@ -62,17 +62,18 @@ func (l *Load) SetOutput(index int, stdout, stderr io.Writer) *Load {
 	return l
 }
 
-func (l *Load) perform(ctx context.Context, carton Builder, target string) (err error) {
+func (l *Load) perform(ctx context.Context, carton Builder, target string, nodeps bool) (err error) {
 
 	arg := l.get()
 	arg.Owner = carton.Provider()
 	arg.Direnv = carton.(runbook.DirEnv)
 
 	ctx = runbook.NewContext(ctx, arg)
-	if target != "" {
+
+	if nodeps && target != "" {
 		err = carton.Runbook().Play(ctx, target)
 	} else {
-		err = carton.Runbook().Perform(ctx)
+		err = carton.Runbook().Perform(ctx, target)
 	}
 	l.put(arg)
 	return
@@ -110,7 +111,7 @@ func (l *Load) run(ctx context.Context, carton, target string) {
 	}
 	wg.Wait()
 
-	err = l.perform(ctx, b, target)
+	err = l.perform(ctx, b, target, false)
 	if err != nil {
 		l.cancel()
 		if l.err == nil {
@@ -132,7 +133,7 @@ func (l *Load) Run(ctx context.Context, carton, target string, nodeps bool) erro
 		if err != nil {
 			return err
 		}
-		return l.perform(ctx, b, target)
+		return l.perform(ctx, b, target, true)
 	}
 
 	l.run(ctx, carton, target)

@@ -22,6 +22,7 @@ type Modifier interface {
 	SetSrcPath(dir string) error
 
 	// used to update dependency
+	// dep format: cartonName[@stageName]
 	Depends(dep ...string) []string
 	BuildDepends(dep ...string) []string
 

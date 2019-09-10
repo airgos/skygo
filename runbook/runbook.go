@@ -153,7 +153,8 @@ func (rb *Runbook) RunTask(ctx context.Context, name string) error {
 
 // Perform carry out all stages in the runbook
 // Break if any stage failed
-func (rb *Runbook) Perform(ctx context.Context) error {
+// Break if current stage is @name
+func (rb *Runbook) Perform(ctx context.Context, name string) error {
 
 	for stage := rb.Head(); stage != nil; stage = stage.Next() {
 		if stage.tasks.Len() > 0 {
@@ -161,6 +162,10 @@ func (rb *Runbook) Perform(ctx context.Context) error {
 			err := stage.Play(ctx)
 			if err != nil {
 				return err
+			}
+
+			if stage.name == name {
+				return nil
 			}
 		}
 	}

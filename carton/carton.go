@@ -136,6 +136,7 @@ func (c *Carton) From(file ...string) []string {
 }
 
 // BuildDepends add depends only required for building from scratch
+// dep format: cartonName[@stageName]
 // Always return the same kind of depends
 func (c *Carton) BuildDepends(dep ...string) []string {
 
@@ -147,6 +148,7 @@ func (c *Carton) BuildDepends(dep ...string) []string {
 }
 
 // Depends add depends required for building from scratch, running or both
+// dep format: cartonName[@stageName]
 // Always return the same kind of depends
 func (c *Carton) Depends(dep ...string) []string {
 
