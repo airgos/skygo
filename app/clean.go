@@ -8,7 +8,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"merge/carton"
+	"merge/load"
 	"merge/runbook"
 )
 
@@ -31,7 +31,7 @@ func (c *clean) Run(ctx context.Context, args ...string) error {
 		return commandLineErrorf("carton name must be supplied")
 	}
 
-	err := carton.NewLoad(1).Clean(ctx, args[0], c.Force)
+	err := load.NewLoad(1).Clean(ctx, args[0], c.Force)
 	if err == runbook.ErrUnknownTask {
 		return fmt.Errorf("carton %s has no task clean, try to add flag -force", args[0])
 	}

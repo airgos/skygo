@@ -9,7 +9,7 @@ import (
 	"flag"
 	"fmt"
 
-	"merge/carton"
+	"merge/load"
 )
 
 type build struct {
@@ -33,5 +33,5 @@ func (b *build) Run(ctx context.Context, args ...string) error {
 		return commandLineErrorf("carton name must be supplied")
 	}
 
-	return carton.NewLoad(0).Run(ctx, args[0], b.Target, b.NoDeps)
+	return load.NewLoad(0).Run(ctx, args[0], b.Target, b.NoDeps)
 }

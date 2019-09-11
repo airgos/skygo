@@ -2,7 +2,8 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package carton
+// Package load delives final carton to user
+package load
 
 import (
 	"bytes"
@@ -14,6 +15,7 @@ import (
 	"strings"
 	"sync"
 
+	"merge/carton"
 	"merge/runbook"
 )
 
@@ -81,7 +83,7 @@ func (l *Load) SetOutput(index int, stdout, stderr io.Writer) *Load {
 	return l
 }
 
-func (l *Load) perform(ctx context.Context, carton Builder, target string,
+func (l *Load) perform(ctx context.Context, carton carton.Builder, target string,
 	nodeps bool) (index int, err error) {
 
 	index = l.get()
@@ -106,10 +108,10 @@ func (l *Load) perform(ctx context.Context, carton Builder, target string,
 	return index, err
 }
 
-func (l *Load) run(ctx context.Context, carton, target string) {
+func (l *Load) run(ctx context.Context, name, target string) {
 	var wg sync.WaitGroup
 
-	b, _, err := Find(carton)
+	b, _, err := carton.Find(name)
 	if err != nil {
 		l.err = err
 		return
@@ -121,20 +123,20 @@ func (l *Load) run(ctx context.Context, carton, target string) {
 
 	wg.Add(len(deps))
 	for _, d := range deps {
-		carton := d
+		name := d
 		target := ""
 		if i := strings.LastIndex(d, "@"); i >= 0 {
-			carton, target = d[:i], d[i+1:]
+			name, target = d[:i], d[i+1:]
 		}
-		go func(ctx context.Context, carton, target string) {
+		go func(ctx context.Context, name, target string) {
 
 			select {
 			default:
-				l.run(ctx, carton, target)
+				l.run(ctx, name, target)
 			case <-ctx.Done():
 			}
 			wg.Done()
-		}(ctx, carton, target)
+		}(ctx, name, target)
 	}
 	wg.Wait()
 
@@ -149,13 +151,13 @@ func (l *Load) run(ctx context.Context, carton, target string) {
 }
 
 // Run start loading
-func (l *Load) Run(ctx context.Context, carton, target string, nodeps bool) error {
+func (l *Load) Run(ctx context.Context, name, target string, nodeps bool) error {
 	ctx, cancel := context.WithCancel(ctx)
 	l.cancel = cancel
 
 	if nodeps {
 
-		b, _, err := Find(carton)
+		b, _, err := carton.Find(name)
 		if err != nil {
 			return err
 		}
@@ -163,7 +165,7 @@ func (l *Load) Run(ctx context.Context, carton, target string, nodeps bool) erro
 		return err
 	}
 
-	l.run(ctx, carton, target)
+	l.run(ctx, name, target)
 	if l.err != nil {
 		return l
 	}
@@ -171,9 +173,9 @@ func (l *Load) Run(ctx context.Context, carton, target string, nodeps bool) erro
 }
 
 // Clean invokes carton's method Clean
-func (l *Load) Clean(ctx context.Context, carton string, force bool) error {
+func (l *Load) Clean(ctx context.Context, name string, force bool) error {
 
-	c, _, err := Find(carton)
+	c, _, err := carton.Find(name)
 	if err != nil {
 		return err
 	}
