@@ -26,19 +26,14 @@ func (*clean) Help(f *flag.FlagSet) {
 	f.PrintDefaults()
 }
 
-func (b *clean) Run(ctx context.Context, args ...string) error {
+func (c *clean) Run(ctx context.Context, args ...string) error {
 	if len(args) == 0 {
 		return commandLineErrorf("carton name must be supplied")
 	}
 
-	c, _, e := carton.Find(args[0])
-	if e != nil {
-		return fmt.Errorf("carton %s is %s", args[0], e)
-	}
-
-	e = c.Clean(ctx, b.Force)
-	if e == runbook.ErrUnknownTask {
+	err := carton.NewLoad(1).Clean(ctx, args[0], c.Force)
+	if err == runbook.ErrUnknownTask {
 		return fmt.Errorf("carton %s has no task clean, try to add flag -force", args[0])
 	}
-	return e
+	return err
 }

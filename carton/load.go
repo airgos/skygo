@@ -172,3 +172,21 @@ func (l *Load) Error() string {
 	str.Write(l.bufs[l.index].Bytes())
 	return str.String()
 }
+
+// Clean invokes carton's method Clean
+func (l *Load) Clean(ctx context.Context, carton string, force bool) error {
+
+	c, _, err := Find(carton)
+	if err != nil {
+		return err
+	}
+
+	arg := l.arg[0]
+	arg.Owner = c.Provider()
+	arg.Direnv = c.(runbook.DirEnv)
+	arg.SetOutput(os.Stdout, os.Stderr)
+	ctx = runbook.NewContext(ctx, arg)
+
+	err = c.Clean(ctx, force)
+	return err
+}

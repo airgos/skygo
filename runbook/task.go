@@ -140,7 +140,10 @@ func (tc *TaskCmd) Run(ctx context.Context) error {
 
 	var r io.Reader
 	routine := tc.routine
-	arg, _ := FromContext(ctx)
+	arg, ok := FromContext(ctx)
+	if !ok {
+		return fmt.Errorf("Context don't have Arg")
+	}
 
 	// regular expression used to match shell function name
 	exp := regexp.MustCompile(fmt.Sprintf(` *%s *\( *\)`, tc.routine))
