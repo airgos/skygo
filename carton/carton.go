@@ -172,35 +172,23 @@ func (c *Carton) Depends(dep ...string) []string {
 func (c *Carton) SrcPath() string {
 
 	if c.srcpath != "" {
-
 		return c.srcpath
 	}
 
-	if file, e := os.Open(c.WorkPath()); e == nil {
-		var d string
-		if fpaths, e := file.Readdirnames(-1); e == nil {
-
-			// choose the only one dir
-			if len(fpaths) == 1 {
-				d = filepath.Join(c.WorkPath(), fpaths[0])
-				if info, e := os.Stat(d); e == nil && info.IsDir() {
-					c.srcpath = d
-					return d
-				}
-			}
-
-			_, ver := c.Resource().Selected()
-			d = filepath.Join(c.WorkPath(), fmt.Sprintf("%s-%s", c.Provider(), ver))
-			if info, e := os.Stat(d); e == nil && info.IsDir() {
-				c.srcpath = d
-				return d
-			}
-
-			if len(fpaths) > 1 {
-				log.Warning("Don't know which directory should be chosen for SrcPath. Please set it explicitily")
-			}
-		}
+	d := filepath.Join(c.WorkPath(), c.name)
+	if info, e := os.Stat(d); e == nil && info.IsDir() {
+		c.srcpath = d
+		return d
 	}
+
+	_, ver := c.Resource().Selected()
+	d = filepath.Join(c.WorkPath(), fmt.Sprintf("%s-%s", c.name, ver))
+	if info, e := os.Stat(d); e == nil && info.IsDir() {
+		c.srcpath = d
+		return d
+	}
+
+	log.Warning("Don't know where SrcPath is. Please set it by SetSrcPath explicitily")
 	return ""
 }
 
@@ -245,7 +233,8 @@ func (c *Carton) WorkPath() string {
 
 	dir := fmt.Sprintf("%s", c.Provider())
 	// TODO: get from config package
-	dir = filepath.Join("build", dir)
+	_, ver := c.Resource().Selected()
+	dir = filepath.Join("build", dir, ver)
 	dir, _ = filepath.Abs(dir)
 	if _, e := os.Stat(dir); e != nil {
 		os.MkdirAll(dir, 0755)
