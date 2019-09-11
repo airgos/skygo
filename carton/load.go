@@ -27,10 +27,15 @@ type Load struct {
 
 	cancel context.CancelFunc
 
-	// err is allowed to set only once
-	once  sync.Once
-	err   error
-	index int // which load occurs error
+	// loadError is allowed to set only once
+	loadError
+	once sync.Once
+}
+
+type loadError struct {
+	err    error
+	carton string        // error occurs on which carton
+	buf    *bytes.Buffer // hold error log message
 }
 
 // NewLoad create load to build carton
@@ -136,8 +141,9 @@ func (l *Load) run(ctx context.Context, carton, target string) {
 	if index, err := l.perform(ctx, b, target, false); err != nil {
 		l.cancel()
 		l.once.Do(func() {
-			l.err = fmt.Errorf("%s==>\n%s", b.Provider(), err)
-			l.index = index
+			l.carton = b.Provider()
+			l.buf = l.bufs[index]
+			l.err = err
 		})
 	}
 }
@@ -164,15 +170,6 @@ func (l *Load) Run(ctx context.Context, carton, target string, nodeps bool) erro
 	return nil
 }
 
-func (l *Load) Error() string {
-
-	var str strings.Builder
-	fmt.Fprintln(&str, l.err)
-	fmt.Fprintf(&str, "\nError log:\n")
-	str.Write(l.bufs[l.index].Bytes())
-	return str.String()
-}
-
 // Clean invokes carton's method Clean
 func (l *Load) Clean(ctx context.Context, carton string, force bool) error {
 
@@ -189,4 +186,14 @@ func (l *Load) Clean(ctx context.Context, carton string, force bool) error {
 
 	err = c.Clean(ctx, force)
 	return err
+}
+
+func (l *Load) Error() string {
+
+	var str strings.Builder
+
+	fmt.Fprintf(&str, "\n\x1b[0;34m❯❯❯❯❯❯❯❯❯❯❯❯  %s\x1b[0m\n%s", l.carton, l.err) // blue(34)
+	str.WriteString(fmt.Sprintf("\n\n\x1b[0;31m%s \x1b[0m", "Error log: ↡\n"))    // red(31)
+	str.Write(l.buf.Bytes())
+	return str.String()
 }
