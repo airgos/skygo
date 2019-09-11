@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package carton
+package runbook
 
 import (
 	"context"
@@ -14,7 +14,6 @@ import (
 	"strings"
 
 	"merge/log"
-	"merge/runbook"
 )
 
 var patchcmd = `
@@ -36,9 +35,11 @@ git apply $PATCHFILE && {
 `
 
 // Patch search patch/diff files under WorkPath, sort, then apply
-func Patch(ctx context.Context, b Builder) error {
+func Patch(ctx context.Context) error {
 
-	wd := b.WorkPath()
+	arg, _ := FromContext(ctx)
+	direnv := arg.Direnv
+	wd := direnv.WorkPath()
 	file, e := os.Open(wd)
 	if e != nil {
 		return nil
@@ -61,11 +62,10 @@ func Patch(ctx context.Context, b Builder) error {
 				patch := filepath.Join(wd, fpath)
 
 				cmd := exec.CommandContext(ctx, "/bin/bash", "-c", patchcmd)
-				cmd.Dir = b.SrcPath()
-				arg, _ := runbook.FromContext(ctx)
+				cmd.Dir = direnv.SrcPath()
 				cmd.Stdout, cmd.Stderr = arg.Output()
 
-				cmd.Env = append(cmd.Env, b.Environ()...)
+				cmd.Env = append(cmd.Env, direnv.Environ()...)
 				cmd.Env = append(cmd.Env, fmt.Sprintf("PATCHFILE=%s\n", patch))
 
 				if e := cmd.Run(); e != nil {

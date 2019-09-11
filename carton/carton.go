@@ -83,7 +83,7 @@ func NewCarton(name string, m func(c *Carton)) {
 		})
 
 		patch, _ := fetch.InsertAfter(PATCH).AddTask(0, func(ctx context.Context) error {
-			return Patch(ctx, c)
+			return runbook.Patch(ctx)
 		})
 		patch.InsertAfter(PREPARE).InsertAfter(BUILD).InsertAfter(INSTALL)
 		c.runbook = rb
