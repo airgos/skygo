@@ -72,6 +72,7 @@ func NewCarton(name string, m func(c *Carton)) {
 		rb := runbook.NewRunbook()
 		fetch := rb.PushFront(FETCH)
 		fetch.AddTask(0, func(ctx context.Context) error {
+			os.MkdirAll(c.WorkPath(), 0755)
 			return c.fetch.Download(ctx,
 				// reset subsequent stages
 				func() {
@@ -99,7 +100,7 @@ func (c *Carton) Init(file string, arg Modifier, modify func(arg Modifier)) {
 	add(c, file, func() {
 		c.provider = []string{}
 		c.environ = make(map[string]string)
-		c.fetch = fetch.NewFetch(config.DownloadDir())
+		c.fetch = fetch.NewFetch(config.GetVar("DLDIR"))
 
 		c.file = []string{}
 		c.filepath = []string{}
@@ -231,14 +232,9 @@ func (c *Carton) Resource() *fetch.Resource {
 // WorkPath return value of WorkPath
 func (c *Carton) WorkPath() string {
 
-	dir := fmt.Sprintf("%s", c.Provider())
-	// TODO: get from config package
 	_, ver := c.Resource().Selected()
-	dir = filepath.Join("build", dir, ver)
+	dir := filepath.Join(config.GetVar(config.WORKDIR), c.name, ver)
 	dir, _ = filepath.Abs(dir)
-	if _, e := os.Stat(dir); e != nil {
-		os.MkdirAll(dir, 0755)
-	}
 	return dir
 }
 
@@ -260,7 +256,7 @@ func (c *Carton) Environ() []string {
 		env = append(env, fmt.Sprintf("%s=%s", k, v))
 	}
 	_, ver := c.Resource().Selected()
-	env = append(env, fmt.Sprintf("PV=%s", ver), fmt.Sprintf("SRC=%s", c.SrcPath()))
+	env = append(env, fmt.Sprintf("PV=%s", ver), fmt.Sprintf("%s=%s", config.SRCDIR, c.SrcPath()))
 	return env
 }
 

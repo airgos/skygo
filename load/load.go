@@ -16,6 +16,7 @@ import (
 	"sync"
 
 	"merge/carton"
+	"merge/config"
 	"merge/runbook"
 )
 
@@ -152,11 +153,14 @@ func (l *Load) run(ctx context.Context, name, target string) {
 
 // Run start loading
 func (l *Load) Run(ctx context.Context, name, target string, nodeps bool) error {
+
 	ctx, cancel := context.WithCancel(ctx)
 	l.cancel = cancel
 
-	if nodeps {
+	os.MkdirAll(config.GetVar(config.BUILDIR), 0755)
+	os.MkdirAll(config.GetVar(config.DLDIR), 0755)
 
+	if nodeps {
 		b, _, err := carton.Find(name)
 		if err != nil {
 			return err
