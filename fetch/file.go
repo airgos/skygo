@@ -34,7 +34,7 @@ func file(ctx context.Context, url string) error {
 			return err
 		}
 		target := filepath.Join(wd, filepath.Base(url))
-		fmt.Fprintf(stdout, "Copy %s to %s\n", file, target)
+		fmt.Fprintf(stdout, "Copy %s to %s\n", path, target)
 		utils.CopyFile(target, fileinfo.Mode(), file)
 		// TODO: copy when mod time and content is chagned
 		break
