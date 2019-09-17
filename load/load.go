@@ -85,9 +85,9 @@ func (l *Load) SetOutput(index int, stdout, stderr io.Writer) *Load {
 }
 
 func (l *Load) perform(ctx context.Context, carton carton.Builder, target string,
-	nodeps bool) (index int, err error) {
+	nodeps bool) (err error) {
 
-	index = l.get()
+	index := l.get()
 	arg := l.arg[index]
 	arg.Owner = carton.Provider()
 	arg.Direnv = carton.(runbook.DirEnv)
@@ -106,7 +106,16 @@ func (l *Load) perform(ctx context.Context, carton carton.Builder, target string
 		err = carton.Runbook().Perform(ctx, target)
 	}
 	l.put(index)
-	return index, err
+
+	if err != nil {
+		l.once.Do(func() {
+			l.carton = arg.Owner
+			l.buf = l.bufs[index]
+			l.err = err
+		})
+		return l
+	}
+	return nil
 }
 
 func (l *Load) run(ctx context.Context, name, target string) {
@@ -115,6 +124,7 @@ func (l *Load) run(ctx context.Context, name, target string) {
 	b, _, err := carton.Find(name)
 	if err != nil {
 		l.err = err
+		l.carton = name
 		return
 	}
 
@@ -141,13 +151,8 @@ func (l *Load) run(ctx context.Context, name, target string) {
 	}
 	wg.Wait()
 
-	if index, err := l.perform(ctx, b, target, false); err != nil {
+	if err := l.perform(ctx, b, target, false); err != nil {
 		l.cancel()
-		l.once.Do(func() {
-			l.carton = b.Provider()
-			l.buf = l.bufs[index]
-			l.err = err
-		})
 	}
 }
 
@@ -163,10 +168,11 @@ func (l *Load) Run(ctx context.Context, name, target string, nodeps bool) error 
 	if nodeps {
 		b, _, err := carton.Find(name)
 		if err != nil {
-			return err
+			l.err = err
+			l.carton = name
+			return l
 		}
-		_, err = l.perform(ctx, b, target, true)
-		return err
+		return l.perform(ctx, b, target, true)
 	}
 
 	l.run(ctx, name, target)
@@ -199,7 +205,9 @@ func (l *Load) Error() string {
 	var str strings.Builder
 
 	fmt.Fprintf(&str, "\n\x1b[0;34m❯❯❯❯❯❯❯❯❯❯❯❯  %s\x1b[0m\n%s", l.carton, l.err) // blue(34)
-	str.WriteString(fmt.Sprintf("\n\n\x1b[0;31m%s \x1b[0m", "Error log: ↡\n"))    // red(31)
-	str.Write(l.buf.Bytes())
+	if l.buf != nil && l.buf.Len() > 0 {
+		str.WriteString(fmt.Sprintf("\n\n\x1b[0;31m%s \x1b[0m", "Error log: ↡\n")) // red(31)
+		str.Write(l.buf.Bytes())
+	}
 	return str.String()
 }
