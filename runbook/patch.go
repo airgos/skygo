@@ -65,7 +65,6 @@ func Patch(ctx context.Context) error {
 				cmd.Dir = direnv.SrcPath()
 				cmd.Stdout, cmd.Stderr = arg.Output()
 
-				cmd.Env = append(cmd.Env, direnv.Environ()...)
 				cmd.Env = append(cmd.Env, fmt.Sprintf("PATCHFILE=%s\n", patch))
 
 				if e := cmd.Run(); e != nil {

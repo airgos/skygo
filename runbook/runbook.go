@@ -36,10 +36,6 @@ type DirEnv interface {
 
 	// FilePath return a collection of directory that's be used for locating local file
 	FilePath() []string
-
-	// Environ returns a slice of strings representing the environment,
-	// in the form "key=value".
-	Environ() []string
 }
 
 // Runbook consists of a series of stage and a independent taskset

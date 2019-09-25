@@ -14,8 +14,6 @@ const (
 	TMPDIR  = "TMPDIR"
 	WORKDIR = "WORKDIR"
 
-	SRCDIR = "SRCDIR"
-
 	// for building machine
 	NATIVEARCH   = "NATIVEARCH"
 	NATIVEOS     = "NATIVEOS"

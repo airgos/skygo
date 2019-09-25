@@ -179,7 +179,6 @@ func (tc *TaskCmd) Run(ctx context.Context) error {
 		cmd.Stdin = r
 
 	}
-	cmd.Env = append(cmd.Env, arg.Direnv.Environ()...)
 
 	if e := cmd.Run(); e != nil {
 		return fmt.Errorf("Runbook: %s", e)

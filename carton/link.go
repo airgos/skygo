@@ -32,12 +32,29 @@ func (l *link) Depends(dep ...string) []string      { return l.h.Depends() }
 func (l *link) Runbook() *runbook.Runbook           { return l.h.Runbook() }
 func (l *link) String() string                      { return l.h.String() }
 
-func (l *link) Clean(ctx context.Context, force bool) error {
-	return l.h.Clean(ctx, force)
+func (l *link) SetVar(key, value string) { l.SetVar(key, value) }
+
+// GetVar retrieves the value of the variable named by the key.
+// It returns the value, which will be empty if the variable is not present.
+func (l *link) GetVar(key string) string {
+	if key == "CN" {
+		return l.alias
+	}
+	return l.GetVar(key)
 }
 
-func (l *link) Environ() []string {
-	return append(l.h.Environ(), fmt.Sprintf("PN=%s", l.alias))
+// VisitVars visit each variable
+func (l *link) VisitVars(f func(key, value string)) {
+	l.VisitVars(func(key, value string) {
+		if key == "CN" {
+			value = l.alias
+		}
+		f(key, value)
+	})
+}
+
+func (l *link) Clean(ctx context.Context, force bool) error {
+	return l.h.Clean(ctx, force)
 }
 
 // Provide create link to provider

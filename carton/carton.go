@@ -56,8 +56,7 @@ type Carton struct {
 	fetch   *fetch.Resource
 	runbook *runbook.Runbook
 
-	// environment variables who are exported to cartion running space by format key=value
-	environ map[string]string
+	vars map[string]string
 }
 
 // NewCarton create a carton and add to inventory
@@ -99,14 +98,14 @@ func (c *Carton) Init(file string, arg Modifier, modify func(arg Modifier)) {
 
 	add(c, file, func() {
 		c.provider = []string{}
-		c.environ = make(map[string]string)
+		c.vars = make(map[string]string)
 		c.fetch = fetch.NewFetch(config.GetVar("DLDIR"))
 
 		c.file = []string{}
 		c.filepath = []string{}
 
 		c.provider = append(c.provider, c.name)
-		c.environ["PN"] = c.name
+		c.vars["CN"] = c.name //CN: carton name
 
 		modify(arg)
 	})
@@ -248,22 +247,22 @@ func (c *Carton) SetRunbook(rb *runbook.Runbook) {
 	c.runbook = rb
 }
 
-// Environ returns a copy of strings representing the environment,
-// in the form "key=value".
-func (c *Carton) Environ() []string {
-	env := make([]string, 0, len(c.environ))
-	for k, v := range c.environ {
-		env = append(env, fmt.Sprintf("%s=%s", k, v))
-	}
-	_, ver := c.Resource().Selected()
-	env = append(env, fmt.Sprintf("PV=%s", ver), fmt.Sprintf("%s=%s", config.SRCDIR, c.SrcPath()))
-	return env
+// GetVar retrieves the value of the variable named by the key.
+// It returns the value, which will be empty if the variable is not present.
+func (c *Carton) GetVar(key string) string {
+	return c.vars[key]
 }
 
-// Setenv sets the value of the environment variable named by the key.
-// It returns an error, if any.
-func (c *Carton) Setenv(key, value string) {
-	c.environ[key] = value
+// SetVar sets the value of the variable named by the key.
+func (c *Carton) SetVar(key, value string) {
+	c.vars[key] = value
+}
+
+// VisitVars visit each variable
+func (c *Carton) VisitVars(f func(key, value string)) {
+	for k, v := range c.vars {
+		f(k, v)
+	}
 }
 
 // Clean cleanup

@@ -26,6 +26,13 @@ type Modifier interface {
 	Depends(dep ...string) []string
 	BuildDepends(dep ...string) []string
 
+	// GetVar retrieves the value of the variable named by the key.
+	// It returns the value, which will be empty if the variable is not present.
+	GetVar(key string) string
+
+	// SetVar sets the value of the variable named by the key.
+	SetVar(key, value string)
+
 	// Runbook give runbook
 	Runbook() *runbook.Runbook
 
@@ -57,6 +64,13 @@ type Builder interface {
 
 	// Return fetch state
 	Resource() *fetch.Resource
+
+	// GetVar retrieves the value of the variable named by the key.
+	// It returns the value, which will be empty if the variable is not present.
+	GetVar(key string) string
+
+	// VisitVars visit each variable
+	VisitVars(f func(key, value string))
 
 	runbook.DirEnv
 
