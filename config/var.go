@@ -3,24 +3,32 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 )
 
+// global variable name
+const (
+	TOPDIR  = "TOPDIR"
+	BUILDIR = "BUILDIR"
+	DLDIR   = "DLDIR"
+	TMPDIR  = "TMPDIR"
+	WORKDIR = "WORKDIR"
+
+	SRCDIR = "SRCDIR"
+
+	// for building machine
+	NATIVEARCH   = "NATIVEARCH"
+	NATIVEOS     = "NATIVEOS"
+	NATIVEVENDOR = "NATIVEVENDOR"
+)
+
+// vars hosts values
 type vars map[string]string
 
-var defaultVars vars = make(vars)
-
-func NewVars() vars {
-	return make(vars)
-}
-
-// GetVar return value of var key
-func (v vars) GetVar(key string) string {
-	return v[key]
-}
-
-// SetVar return value of var key
-func (v vars) SetVar(key, value string) {
-	v[key] = value
+var defaultVars = vars{
+	NATIVEARCH:   runtime.GOARCH,
+	NATIVEOS:     runtime.GOOS,
+	NATIVEVENDOR: "",
 }
 
 // GetVar return value of var key
@@ -42,33 +50,23 @@ func LookupVar(key string) (string, bool) {
 	return value, ok
 }
 
-const (
-	TOPDIR  = "TOPDIR"
-	BUILDIR = "BUILDIR"
-	DLDIR   = "DLDIR"
-	TMPDIR  = "TMPDIR"
-	WORKDIR = "WORKDIR"
-
-	SRCDIR = "SRCDIR"
-)
-
 func init() {
 	wd, _ := os.Getwd()
-	defaultVars.SetVar(TOPDIR, wd)
+	SetVar(TOPDIR, wd)
 
 	// default: build
 	build := filepath.Join(wd, "build")
-	defaultVars.SetVar(BUILDIR, build)
+	SetVar(BUILDIR, build)
 
 	// default: build/tmp
 	tmp := filepath.Join(build, "tmp")
-	defaultVars.SetVar(TMPDIR, tmp)
+	SetVar(TMPDIR, tmp)
 
 	// default: build/tmp/work/
 	work := filepath.Join(tmp, "work")
-	defaultVars.SetVar(WORKDIR, work)
+	SetVar(WORKDIR, work)
 
 	// default: build/downloads
 	dl := filepath.Join(build, "downloads")
-	defaultVars.SetVar(DLDIR, dl)
+	SetVar(DLDIR, dl)
 }
