@@ -71,7 +71,8 @@ func NewCarton(name string, m func(c *Carton)) {
 		rb := runbook.NewRunbook()
 		fetch := rb.PushFront(FETCH)
 		fetch.AddTask(0, func(ctx context.Context) error {
-			os.MkdirAll(c.WorkPath(), 0755)
+			arg, _ := runbook.FromContext(ctx)
+			os.MkdirAll(arg.Wd, 0755)
 			return c.fetch.Download(ctx,
 				// reset subsequent stages
 				func() {
@@ -269,8 +270,8 @@ func (c *Carton) VisitVars(f func(key, value string)) {
 // if force is true, remove work path; else try to run independent task clean
 func (c *Carton) Clean(ctx context.Context, force bool) error {
 	if force {
-		wd := c.WorkPath()
-		os.RemoveAll(wd)
+		arg, _ := runbook.FromContext(ctx)
+		os.RemoveAll(arg.Wd)
 		return nil
 	}
 	tset := c.Runbook().TaskSet()

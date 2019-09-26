@@ -90,7 +90,6 @@ func (l *Load) perform(ctx context.Context, carton carton.Builder, target string
 	index := l.get()
 	arg := l.arg[index]
 	arg.Owner = carton.Provider()
-	arg.Direnv = carton.(runbook.DirEnv)
 
 	if nodeps {
 		arg.SetOutput(os.Stdout, os.Stderr)
@@ -192,7 +191,6 @@ func (l *Load) Clean(ctx context.Context, name string, force bool) error {
 
 	arg := l.arg[0]
 	arg.Owner = c.Provider()
-	arg.Direnv = c.(runbook.DirEnv)
 	arg.SetOutput(os.Stdout, os.Stderr)
 	ctx = runbook.NewContext(ctx, arg)
 

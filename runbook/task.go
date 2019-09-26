@@ -148,7 +148,7 @@ func (tc *TaskCmd) Run(ctx context.Context) error {
 	// regular expression used to match shell function name
 	exp := regexp.MustCompile(fmt.Sprintf(` *%s *\( *\)`, tc.routine))
 
-	for _, d := range arg.Direnv.FilesPath() {
+	for _, d := range arg.FilesPath {
 		path := filepath.Join(d, tc.name)
 		if _, err := os.Stat(path); err == nil {
 
@@ -170,7 +170,10 @@ func (tc *TaskCmd) Run(ctx context.Context) error {
 
 	cmd := exec.CommandContext(ctx, "/bin/bash")
 	cmd.Stdout, cmd.Stderr = arg.Output()
-	cmd.Dir = arg.Direnv.SrcPath()
+	cmd.Dir = arg.SrcDir()
+	arg.VisitVars(func(k, v string) {
+		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", k, v))
+	})
 
 	if routine != "" {
 

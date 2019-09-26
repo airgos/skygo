@@ -38,9 +38,8 @@ git apply $PATCHFILE && {
 func Patch(ctx context.Context) error {
 
 	arg, _ := FromContext(ctx)
-	direnv := arg.Direnv
-	wd := direnv.WorkPath()
-	file, e := os.Open(wd)
+
+	file, e := os.Open(arg.Wd)
 	if e != nil {
 		return nil
 	}
@@ -59,10 +58,10 @@ func Patch(ctx context.Context) error {
 
 				log.Trace("To apply patch %s, fpath")
 
-				patch := filepath.Join(wd, fpath)
+				patch := filepath.Join(arg.Wd, fpath)
 
 				cmd := exec.CommandContext(ctx, "/bin/bash", "-c", patchcmd)
-				cmd.Dir = direnv.SrcPath()
+				cmd.Dir = arg.SrcDir()
 				cmd.Stdout, cmd.Stderr = arg.Output()
 
 				cmd.Env = append(cmd.Env, fmt.Sprintf("PATCHFILE=%s\n", patch))

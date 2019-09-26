@@ -26,18 +26,6 @@ var (
 	ErrUnknownTask     = errors.New("Unkown Task")
 )
 
-// DirEnv is the interface to provide environment where Builder work
-type DirEnv interface {
-	// SrcPath return  directory of source code
-	SrcPath() string
-
-	// WorkPath return working directory
-	WorkPath() string
-
-	// FilePath return a collection of directory that's be used for locating local file
-	FilesPath() []string
-}
-
 // Runbook consists of a series of stage and a independent taskset
 type Runbook struct {
 	head    *list.List
@@ -257,7 +245,7 @@ func (s *Stage) Play(ctx context.Context) error {
 	if s.executed == 0 {
 
 		arg, _ := FromContext(ctx)
-		dir := filepath.Join(arg.Direnv.WorkPath(), "temp")
+		dir := filepath.Join(arg.Wd, "temp")
 		os.MkdirAll(dir, 0755)
 
 		logo := filepath.Join(dir, s.name+".log")
@@ -288,8 +276,20 @@ func (s *Stage) Play(ctx context.Context) error {
 
 // Arg holds arguments for runbook
 type Arg struct {
-	Owner  string // who own this
-	Direnv DirEnv
+	// who own this
+	Owner string
+
+	// FilesPath is a collection of directory that's be used for locating local file
+	FilesPath []string
+
+	// working dir
+	Wd string
+
+	// Source Dir
+	SrcDir func() string
+
+	// Visit each variable
+	VisitVars func(func(key, value string))
 
 	// underline IO, call method Output() to get IO
 	stdout, stderr io.Writer

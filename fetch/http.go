@@ -29,7 +29,6 @@ import (
 // support scheme http and https. if file is archiver, unpack it
 func httpAndUnpack(ctx context.Context, dd string, url string) error {
 	arg, _ := runbook.FromContext(ctx)
-	wd := arg.Direnv.WorkPath()
 	stdout, _ := arg.Output()
 
 	slice := strings.Split(url, "#")
@@ -48,7 +47,7 @@ func httpAndUnpack(ctx context.Context, dd string, url string) error {
 
 	if unar := utils.NewUnarchive(fpath); unar != nil {
 		fmt.Fprintf(stdout, "unarchive %s\n", fpath)
-		if e := unar.Unarchive(fpath, wd); e != nil {
+		if e := unar.Unarchive(fpath, arg.Wd); e != nil {
 			return fmt.Errorf("unarchive %s failed:%s", base, e.Error())
 		}
 	}

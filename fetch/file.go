@@ -18,11 +18,10 @@ func file(ctx context.Context, url string) error {
 
 	arg, _ := runbook.FromContext(ctx)
 	stdout, _ := arg.Output()
-	wd := arg.Direnv.WorkPath()
 
 	// skip file://
 	url = url[7:]
-	for _, d := range arg.Direnv.FilesPath() {
+	for _, d := range arg.FilesPath {
 
 		path := filepath.Join(d, url)
 		fileinfo, err := os.Stat(path)
@@ -33,7 +32,7 @@ func file(ctx context.Context, url string) error {
 		if err != nil {
 			return err
 		}
-		target := filepath.Join(wd, filepath.Base(url))
+		target := filepath.Join(arg.Wd, filepath.Base(url))
 		fmt.Fprintf(stdout, "Copy %s to %s\n", path, target)
 		utils.CopyFile(target, fileinfo.Mode(), file)
 		// TODO: copy when mod time and content is chagned

@@ -180,7 +180,6 @@ func (vcs *vcsCmd) syncTag() error {
 func vcsFetch(ctx context.Context, dd string, url string) error {
 
 	arg, _ := runbook.FromContext(ctx)
-	wd := arg.Direnv.WorkPath()
 	repo := url
 	tag := ""
 
@@ -191,7 +190,7 @@ func vcsFetch(ctx context.Context, dd string, url string) error {
 	vcs := byRepo(repo, tag)
 	vcs.ctx = ctx
 
-	if e := vcs.lookupRepo(wd); e != nil {
+	if e := vcs.lookupRepo(arg.Wd); e != nil {
 		return e
 	}
 	if e := vcs.syncTag(); e != nil {

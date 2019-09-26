@@ -72,7 +72,14 @@ type Builder interface {
 	// VisitVars visit each variable
 	VisitVars(f func(key, value string))
 
-	runbook.DirEnv
+	// SrcPath return  directory of source code
+	SrcPath() string
+
+	// WorkPath return working directory
+	WorkPath() string
+
+	// FilesPath return a collection of directory that's be used for locating local file
+	FilesPath() []string
 
 	// Clean cleanup
 	// if force is true, remove work path; else try to run independent task clean
