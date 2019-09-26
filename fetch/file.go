@@ -22,7 +22,7 @@ func file(ctx context.Context, url string) error {
 
 	// skip file://
 	url = url[7:]
-	for _, d := range arg.Direnv.FilePath() {
+	for _, d := range arg.Direnv.FilesPath() {
 
 		path := filepath.Join(d, url)
 		fileinfo, err := os.Stat(path)

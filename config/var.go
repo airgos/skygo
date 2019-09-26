@@ -8,11 +8,11 @@ import (
 
 // global variable name
 const (
-	TOPDIR  = "TOPDIR"
-	BUILDIR = "BUILDIR"
-	DLDIR   = "DLDIR"
-	TMPDIR  = "TMPDIR"
-	WORKDIR = "WORKDIR"
+	TOPDIR    = "TOPDIR"
+	BUILDIR   = "BUILDIR"
+	DLDIR     = "DLDIR"
+	TMPDIR    = "TMPDIR"
+	BASEWKDIR = "BASEWKDIR"
 
 	// for building machine
 	NATIVEARCH   = "NATIVEARCH"
@@ -62,7 +62,7 @@ func init() {
 
 	// default: build/tmp/work/
 	work := filepath.Join(tmp, "work")
-	SetVar(WORKDIR, work)
+	SetVar(BASEWKDIR, work)
 
 	// default: build/downloads
 	dl := filepath.Join(build, "downloads")

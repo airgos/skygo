@@ -35,7 +35,7 @@ type DirEnv interface {
 	WorkPath() string
 
 	// FilePath return a collection of directory that's be used for locating local file
-	FilePath() []string
+	FilesPath() []string
 }
 
 // Runbook consists of a series of stage and a independent taskset

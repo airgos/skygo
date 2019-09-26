@@ -26,7 +26,7 @@ func (l *link) Resource() *fetch.Resource           { return l.h.Resource() }
 func (l *link) From(file ...string) []string        { return l.h.From(file...) }
 func (l *link) SrcPath() string                     { return l.h.SrcPath() }
 func (l *link) WorkPath() string                    { return l.h.WorkPath() }
-func (l *link) FilePath() []string                  { return l.h.FilePath() }
+func (l *link) FilesPath() []string                 { return l.h.FilesPath() }
 func (l *link) BuildDepends(dep ...string) []string { return l.h.BuildDepends() }
 func (l *link) Depends(dep ...string) []string      { return l.h.Depends() }
 func (l *link) Runbook() *runbook.Runbook           { return l.h.Runbook() }
@@ -71,7 +71,7 @@ func (c *Carton) Provide(provider ...string) {
 
 		link := link{h: c, alias: name}
 		addVirtual(&link, name, file)
-		c.provider = append(c.provider, name)
+		c.cartons = append(c.cartons, name)
 	}
 }
 

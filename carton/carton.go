@@ -43,12 +43,12 @@ type Carton struct {
 	Desc     string // oneline description
 	Homepage string // home page
 
-	name     string
-	provider []string
+	name    string
+	cartons []string
 
-	file     []string // which files offer this carton
-	srcpath  string   // path(dir) of SRC code
-	filepath []string // search dirs for scheme file://
+	file      []string // which files offer this carton
+	srcpath   string   // path(dir) of SRC code
+	filespath []string // search dirs for scheme file://
 
 	depends      []string // needed for both running and building
 	buildDepends []string // only needed when building from scratch
@@ -97,14 +97,14 @@ func NewCarton(name string, m func(c *Carton)) {
 func (c *Carton) Init(file string, arg Modifier, modify func(arg Modifier)) {
 
 	add(c, file, func() {
-		c.provider = []string{}
+		c.cartons = []string{}
 		c.vars = make(map[string]string)
 		c.fetch = fetch.NewFetch(config.GetVar("DLDIR"))
 
 		c.file = []string{}
-		c.filepath = []string{}
+		c.filespath = []string{}
 
-		c.provider = append(c.provider, c.name)
+		c.cartons = append(c.cartons, c.name)
 		c.vars["CN"] = c.name //CN: carton name
 
 		modify(arg)
@@ -136,7 +136,7 @@ func (c *Carton) From(file ...string) []string {
 			if notAdded(from) {
 				c.file = append(c.file, from)
 				filepath := strings.TrimSuffix(from, ".go")
-				c.filepath = append(c.filepath, filepath)
+				c.filespath = append(c.filespath, filepath)
 			}
 		}
 	}
@@ -213,14 +213,14 @@ func (c *Carton) AddFilePath(dir string) error {
 	_, e := os.Stat(dir)
 	if e == nil {
 
-		c.filepath = append(c.filepath, dir)
+		c.filespath = append(c.filespath, dir)
 	}
 	return e
 }
 
-// FilePath return FilePath
-func (c *Carton) FilePath() []string {
-	return c.filepath
+// FilesPath return FilePath
+func (c *Carton) FilesPath() []string {
+	return c.filespath
 }
 
 // Resource return fetch state
@@ -232,7 +232,7 @@ func (c *Carton) Resource() *fetch.Resource {
 func (c *Carton) WorkPath() string {
 
 	_, ver := c.Resource().Selected()
-	dir := filepath.Join(config.GetVar(config.WORKDIR), c.name, ver)
+	dir := filepath.Join(config.GetVar(config.BASEWKDIR), c.name, ver)
 	dir, _ = filepath.Abs(dir)
 	return dir
 }
@@ -292,9 +292,9 @@ func (c *Carton) String() string {
 		fmt.Fprintf(&b, "%s\n", c.Homepage)
 	}
 
-	if len(c.provider) > 0 {
-		fmt.Fprintf(&b, "Provider: %s", c.provider[0])
-		for _, p := range c.provider[1:] {
+	if len(c.cartons) > 0 {
+		fmt.Fprintf(&b, "Provids: %s", c.cartons[0])
+		for _, p := range c.cartons[1:] {
 			fmt.Fprintf(&b, " %s", p)
 		}
 		fmt.Fprintf(&b, "\n")

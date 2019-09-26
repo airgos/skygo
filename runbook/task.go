@@ -148,7 +148,7 @@ func (tc *TaskCmd) Run(ctx context.Context) error {
 	// regular expression used to match shell function name
 	exp := regexp.MustCompile(fmt.Sprintf(` *%s *\( *\)`, tc.routine))
 
-	for _, d := range arg.Direnv.FilePath() {
+	for _, d := range arg.Direnv.FilesPath() {
 		path := filepath.Join(d, tc.name)
 		if _, err := os.Stat(path); err == nil {
 
