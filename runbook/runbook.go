@@ -66,15 +66,6 @@ func NewRunbook() *Runbook {
 	return this
 }
 
-// Clone clone Runbook w/ different runtime
-func (rb *Runbook) Clone() *Runbook {
-	n := Runbook{
-		head:    rb.head,
-		taskset: rb.taskset,
-	}
-	return &n
-}
-
 // RunbookInfo give stage slice with the number of task, independent task names
 func (rb *Runbook) RunbookInfo() ([]string, []int, []string) {
 
