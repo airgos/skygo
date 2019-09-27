@@ -18,6 +18,10 @@ const (
 	NATIVEARCH   = "NATIVEARCH"
 	NATIVEOS     = "NATIVEOS"
 	NATIVEVENDOR = "NATIVEVENDOR"
+
+	MACHINEARCH   = "MACHINEARCH"
+	MACHINEOS     = "MACHINEOS"
+	MACHINEVENDOR = "MACHINEVENDOR"
 )
 
 // vars hosts values
@@ -27,6 +31,10 @@ var defaultVars = vars{
 	NATIVEARCH:   runtime.GOARCH,
 	NATIVEOS:     runtime.GOOS,
 	NATIVEVENDOR: "",
+
+	MACHINEOS:     "linux",
+	MACHINEARCH:   "",
+	MACHINEVENDOR: "",
 }
 
 // GetVar return value of var key
