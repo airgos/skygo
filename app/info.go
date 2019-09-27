@@ -9,6 +9,7 @@ import (
 	"flag"
 	"fmt"
 	"merge/carton"
+	"merge/load"
 )
 
 type info struct {
@@ -79,7 +80,7 @@ func show(h carton.Builder) {
 	}
 
 	fmt.Println("==> Path")
-	wd := h.WorkPath()
+	wd := load.WorkDir(h, false)
 	fmt.Println("WORKDIR:", wd)
 	fmt.Println("SRCDIR: ", h.SrcPath(wd))
 

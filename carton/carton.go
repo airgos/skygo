@@ -232,15 +232,6 @@ func (c *Carton) Resource() *fetch.Resource {
 	return c.fetch
 }
 
-// WorkPath return value of WorkPath
-func (c *Carton) WorkPath() string {
-
-	_, ver := c.Resource().Selected()
-	dir := filepath.Join(config.GetVar(config.BASEWKDIR), c.name, ver)
-	dir, _ = filepath.Abs(dir)
-	return dir
-}
-
 // Runbook return runbook hold by Carton
 func (c *Carton) Runbook() *runbook.Runbook {
 	return c.runbook

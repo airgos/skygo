@@ -75,9 +75,6 @@ type Builder interface {
 	// return where source code is under WORKDIR
 	SrcPath(wd string) string
 
-	// WorkPath return working directory
-	WorkPath() string
-
 	// FilesPath return a collection of directory that's be used for locating local file
 	FilesPath() []string
 
