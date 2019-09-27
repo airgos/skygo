@@ -169,23 +169,26 @@ func (c *Carton) Depends(dep ...string) []string {
 	return c.depends
 }
 
-// SrcPath give under which source code is
-func (c *Carton) SrcPath() string {
+// SrcPath return where source code is under WORKDIR
+// WORKDIR depends on ARCH. one carton has different WORKDIR for different ARCH
+func (c *Carton) SrcPath(wd string) string {
 
 	if c.srcpath != "" {
-		return c.srcpath
+		d := filepath.Join(wd, c.srcpath)
+		if info, e := os.Stat(d); e != nil || !info.IsDir() {
+			log.Error("SRCDIR %s does not existed", d)
+		}
+		return d
 	}
 
-	d := filepath.Join(c.WorkPath(), c.name)
+	d := filepath.Join(wd, c.name)
 	if info, e := os.Stat(d); e == nil && info.IsDir() {
-		c.srcpath = d
 		return d
 	}
 
 	_, ver := c.Resource().Selected()
-	d = filepath.Join(c.WorkPath(), fmt.Sprintf("%s-%s", c.name, ver))
+	d = filepath.Join(wd, fmt.Sprintf("%s-%s", c.name, ver))
 	if info, e := os.Stat(d); e == nil && info.IsDir() {
-		c.srcpath = d
 		return d
 	}
 
@@ -193,12 +196,12 @@ func (c *Carton) SrcPath() string {
 	return ""
 }
 
-// SetSrcPath set SrcPath explicitily. It joins with output of WorkPath() as SrcPath
+// SetSrcPath set SrcPath explicitily. dir msut be a relative path that's under WORKDIR
 func (c *Carton) SetSrcPath(dir string) error {
 	if filepath.IsAbs(dir) {
 		return ErrAbsPath
 	}
-	c.srcpath = filepath.Join(c.WorkPath(), dir)
+	c.srcpath = dir
 	return nil
 }
 

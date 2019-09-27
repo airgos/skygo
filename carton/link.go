@@ -24,7 +24,7 @@ type link struct {
 func (l *link) Provider() string                    { return l.h.Provider() }
 func (l *link) Resource() *fetch.Resource           { return l.h.Resource() }
 func (l *link) From(file ...string) []string        { return l.h.From(file...) }
-func (l *link) SrcPath() string                     { return l.h.SrcPath() }
+func (l *link) SrcPath(wd string) string            { return l.h.SrcPath(wd) }
 func (l *link) WorkPath() string                    { return l.h.WorkPath() }
 func (l *link) FilesPath() []string                 { return l.h.FilesPath() }
 func (l *link) BuildDepends(dep ...string) []string { return l.h.BuildDepends() }

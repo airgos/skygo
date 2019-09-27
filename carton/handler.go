@@ -72,8 +72,8 @@ type Builder interface {
 	// VisitVars visit each variable
 	VisitVars(f func(key, value string))
 
-	// SrcPath return  directory of source code
-	SrcPath() string
+	// return where source code is under WORKDIR
+	SrcPath(wd string) string
 
 	// WorkPath return working directory
 	WorkPath() string

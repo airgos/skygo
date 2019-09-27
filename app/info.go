@@ -79,11 +79,12 @@ func show(h carton.Builder) {
 	}
 
 	fmt.Println("==> Path")
-	fmt.Println("Work:", h.WorkPath())
-	fmt.Println("Src: ", h.SrcPath())
+	wd := h.WorkPath()
+	fmt.Println("WORKDIR:", wd)
+	fmt.Println("SRCDIR: ", h.SrcPath(wd))
 
 	filespath := h.FilesPath()
-	fmt.Println("File:", filespath[0])
+	fmt.Println("FilesPath:", filespath[0])
 	for _, p := range filespath[1:] {
 		fmt.Println("     ", p)
 	}
