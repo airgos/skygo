@@ -24,9 +24,11 @@ type Modifier interface {
 	Depends(dep ...string) []string
 	BuildDepends(dep ...string) []string
 
-	// GetVar retrieves the value of the variable named by the key.
-	// It returns the value, which will be empty if the variable is not present.
-	GetVar(key string) string
+	// LookupVar retrieves the value of the variable named by the key.
+	// If the variable is present, value (which may be empty) is returned
+	// and the boolean is true. Otherwise the returned value will be empty
+	// and the boolean will be false.
+	LookupVar(key string) (string, bool)
 
 	// SetVar sets the value of the variable named by the key.
 	SetVar(key, value string)
@@ -63,9 +65,11 @@ type Builder interface {
 	// Return fetch state
 	Resource() *fetch.Resource
 
-	// GetVar retrieves the value of the variable named by the key.
-	// It returns the value, which will be empty if the variable is not present.
-	GetVar(key string) string
+	// LookupVar retrieves the value of the variable named by the key.
+	// If the variable is present, value (which may be empty) is returned
+	// and the boolean is true. Otherwise the returned value will be empty
+	// and the boolean will be false.
+	LookupVar(key string) (string, bool)
 
 	// VisitVars visit each variable
 	VisitVars(f func(key, value string))

@@ -32,13 +32,16 @@ func (l *link) String() string                      { return l.h.String() }
 
 func (l *link) SetVar(key, value string) { l.SetVar(key, value) }
 
-// GetVar retrieves the value of the variable named by the key.
-// It returns the value, which will be empty if the variable is not present.
-func (l *link) GetVar(key string) string {
+// LookupVar retrieves the value of the variable named by the key.
+// If the variable is present, value (which may be empty) is returned
+// and the boolean is true. Otherwise the returned value will be empty
+// and the boolean will be false.
+func (l *link) LookupVar(key string) (string, bool) {
+
 	if key == "CN" {
-		return l.alias
+		return l.alias, true
 	}
-	return l.GetVar(key)
+	return l.LookupVar(key)
 }
 
 // VisitVars visit each variable

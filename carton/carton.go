@@ -242,10 +242,13 @@ func (c *Carton) SetRunbook(rb *runbook.Runbook) {
 	c.runbook = rb
 }
 
-// GetVar retrieves the value of the variable named by the key.
-// It returns the value, which will be empty if the variable is not present.
-func (c *Carton) GetVar(key string) string {
-	return c.vars[key]
+// LookupVar retrieves the value of the variable named by the key.
+// If the variable is present, value (which may be empty) is returned
+// and the boolean is true. Otherwise the returned value will be empty
+// and the boolean will be false.
+func (c *Carton) LookupVar(key string) (string, bool) {
+	value, ok := c.vars[key]
+	return value, ok
 }
 
 // SetVar sets the value of the variable named by the key.

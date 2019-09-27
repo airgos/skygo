@@ -19,10 +19,11 @@ func WorkDir(c carton.Builder, isNative bool) string {
 			config.GetVar(config.NATIVEOS)}, "-")
 	} else {
 
-		arch := c.GetVar(config.MACHINEARCH)
-		if arch == "" {
+		arch, ok := c.LookupVar(config.MACHINEARCH)
+		if !ok {
 			arch = config.GetVar(config.MACHINEARCH)
 		}
+
 		if arch == "" {
 			log.Error("MACHINEARCH is not set")
 		}
