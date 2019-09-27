@@ -5,8 +5,6 @@
 package carton
 
 import (
-	"context"
-
 	"merge/fetch"
 	"merge/runbook"
 )
@@ -77,10 +75,6 @@ type Builder interface {
 
 	// FilesPath return a collection of directory that's be used for locating local file
 	FilesPath() []string
-
-	// Clean cleanup
-	// if force is true, remove work path; else try to run independent task clean
-	Clean(ctx context.Context, force bool) error
 
 	String() string
 }

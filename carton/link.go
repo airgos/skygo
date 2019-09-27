@@ -5,7 +5,6 @@
 package carton
 
 import (
-	"context"
 	"fmt"
 	"merge/fetch"
 	"merge/runbook"
@@ -50,10 +49,6 @@ func (l *link) VisitVars(f func(key, value string)) {
 		}
 		f(key, value)
 	})
-}
-
-func (l *link) Clean(ctx context.Context, force bool) error {
-	return l.h.Clean(ctx, force)
 }
 
 // Provide create link to provider

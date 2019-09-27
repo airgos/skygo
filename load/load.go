@@ -189,13 +189,16 @@ func (l *Load) Clean(ctx context.Context, name string, force bool) error {
 		return err
 	}
 
-	arg := l.arg[0]
-	arg.Owner = c.Provider()
-	arg.SetOutput(os.Stdout, os.Stderr)
-	ctx = runbook.NewContext(ctx, arg)
+	if force {
+		os.RemoveAll(WorkDir(c, false))
+		return nil
+	}
 
-	err = c.Clean(ctx, force)
-	return err
+	tset := c.Runbook().TaskSet()
+	if tset.Has("clean") {
+		return tset.Run(ctx, "clean")
+	}
+	return runbook.ErrUnknownTask
 }
 
 func (l *Load) Error() string {

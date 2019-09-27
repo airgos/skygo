@@ -260,21 +260,6 @@ func (c *Carton) VisitVars(f func(key, value string)) {
 	}
 }
 
-// Clean cleanup
-// if force is true, remove work path; else try to run independent task clean
-func (c *Carton) Clean(ctx context.Context, force bool) error {
-	if force {
-		arg, _ := runbook.FromContext(ctx)
-		os.RemoveAll(arg.Wd)
-		return nil
-	}
-	tset := c.Runbook().TaskSet()
-	if tset.Has("clean") {
-		return tset.Run(ctx, "clean")
-	}
-	return runbook.ErrUnknownTask
-}
-
 func (c *Carton) String() string {
 
 	var b strings.Builder
