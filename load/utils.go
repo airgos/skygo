@@ -1,11 +1,12 @@
 package load
 
 import (
+	"path/filepath"
 	"strings"
 
 	"merge/carton"
 	"merge/config"
-	"path/filepath"
+	"merge/log"
 )
 
 // WorkDir calculates WORKDIR for carton
@@ -21,6 +22,9 @@ func WorkDir(c carton.Builder, isNative bool) string {
 		arch := c.GetVar(config.MACHINEARCH)
 		if arch == "" {
 			arch = config.GetVar(config.MACHINEARCH)
+		}
+		if arch == "" {
+			log.Error("MACHINEARCH is not set")
 		}
 
 		dir = strings.Join([]string{arch,
