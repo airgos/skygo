@@ -286,7 +286,7 @@ type Arg struct {
 	Wd string
 
 	// Source Dir
-	SrcDir func() string
+	SrcDir func(wd string) string
 
 	// Visit each variable
 	VisitVars func(func(key, value string))

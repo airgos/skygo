@@ -61,7 +61,7 @@ func Patch(ctx context.Context) error {
 				patch := filepath.Join(arg.Wd, fpath)
 
 				cmd := exec.CommandContext(ctx, "/bin/bash", "-c", patchcmd)
-				cmd.Dir = arg.SrcDir()
+				cmd.Dir = arg.SrcDir(arg.Wd)
 				cmd.Stdout, cmd.Stderr = arg.Output()
 
 				cmd.Env = append(cmd.Env, fmt.Sprintf("PATCHFILE=%s\n", patch))

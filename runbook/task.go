@@ -170,7 +170,7 @@ func (tc *TaskCmd) Run(ctx context.Context) error {
 
 	cmd := exec.CommandContext(ctx, "/bin/bash")
 	cmd.Stdout, cmd.Stderr = arg.Output()
-	cmd.Dir = arg.SrcDir()
+	cmd.Dir = arg.SrcDir(arg.Wd)
 	arg.VisitVars(func(k, v string) {
 		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", k, v))
 	})
