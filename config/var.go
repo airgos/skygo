@@ -14,14 +14,21 @@ const (
 	TMPDIR    = "TMPDIR"
 	BASEWKDIR = "BASEWKDIR"
 
-	// for building machine
+	// native/building machine's attributes
 	NATIVEARCH   = "NATIVEARCH"
 	NATIVEOS     = "NATIVEOS"
 	NATIVEVENDOR = "NATIVEVENDOR"
 
+	// target machine's attributes
+	MACHINE       = "MACHINE"
 	MACHINEARCH   = "MACHINEARCH"
 	MACHINEOS     = "MACHINEOS"
 	MACHINEVENDOR = "MACHINEVENDOR"
+
+	// their value are calcaulated dynamically
+	TARGETARCH   = "TARGETARCH"
+	TARGETOS     = "TARGETOS"
+	TARGETVENDOR = "TARGETVENDOR"
 )
 
 // vars hosts values
