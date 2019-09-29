@@ -14,6 +14,9 @@ const (
 	TMPDIR    = "TMPDIR"
 	BASEWKDIR = "BASEWKDIR"
 
+	STAGINGDIR = "STAGINGDIR"
+	IMAGEDIR   = "IMAGEDIR"
+
 	// native/building machine's attributes
 	NATIVEARCH   = "NATIVEARCH"
 	NATIVEOS     = "NATIVEOS"
@@ -78,6 +81,14 @@ func init() {
 	// default: build/tmp/work/
 	work := filepath.Join(tmp, "work")
 	SetVar(BASEWKDIR, work)
+
+	// default: build/tmp/sysroots/
+	sysroots := filepath.Join(tmp, "sysroots")
+	SetVar(STAGINGDIR, sysroots)
+
+	// default: build/tmp/deploy/image
+	image := filepath.Join(tmp, "deploy", "image")
+	SetVar(IMAGEDIR, image)
 
 	// default: build/downloads
 	dl := filepath.Join(build, "downloads")
