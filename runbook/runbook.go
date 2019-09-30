@@ -276,20 +276,31 @@ func (s *Stage) Play(ctx context.Context) error {
 
 // Arg holds arguments for runbook
 type Arg struct {
-	// who own this
+	// who own this, same as LookupVar("PN")
 	Owner string
 
 	// FilesPath is a collection of directory that's be used for locating local file
 	FilesPath []string
 
-	// working dir
+	// value of WORKDIR, same as LookupVar("WORKDIR")
 	Wd string
 
-	// Source Dir
+	// SrcDir calculate Source Dir under WORKDIR
 	SrcDir func(wd string) string
 
-	// Visit each variable
+	// Visit each variable and export to command task
+	// it shound not range Vars
 	VisitVars func(func(key, value string))
+
+	// LookupVar retrieves the value of the variable named by the key.
+	// If the variable is present, value (which may be empty) is returned
+	// and the boolean is true. Otherwise the returned value will be empty
+	// and the boolean will be false.
+	// golang task should call it to get value of Variable
+	LookupVar func(key string) (string, bool)
+
+	// LookupVar implementation should check Vars firstly, if it does not exist, try other
+	Vars map[string]string
 
 	// underline IO, call method Output() to get IO
 	stdout, stderr io.Writer

@@ -174,6 +174,9 @@ func (tc *TaskCmd) Run(ctx context.Context) error {
 	arg.VisitVars(func(k, v string) {
 		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", k, v))
 	})
+	for k, v := range arg.Vars {
+		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", k, v))
+	}
 
 	if routine != "" {
 
