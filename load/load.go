@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"sync"
@@ -88,8 +89,7 @@ func (l *Load) perform(ctx context.Context, carton carton.Builder, target string
 
 	index := l.get()
 	arg := l.arg[index]
-	arg.Owner = carton.Provider()
-
+	setupArg(carton, arg)
 	if nodeps {
 		arg.SetOutput(os.Stdout, os.Stderr)
 	}
@@ -210,4 +210,41 @@ func (l *Load) Error() string {
 		str.Write(l.buf.Bytes())
 	}
 	return str.String()
+}
+
+func setupArg(carton carton.Builder, arg *runbook.Arg) {
+
+	arg.Owner = carton.Provider()
+	arg.FilesPath = carton.FilesPath()
+	arg.Wd = WorkDir(carton, false)
+	arg.SrcDir = carton.SrcPath
+	arg.VisitVars = func(fn func(key, value string)) {
+		carton.VisitVars(fn)
+	}
+	arg.LookupVar = func(key string) (string, bool) {
+		if value, ok := arg.Vars[key]; ok {
+			return value, ok
+		}
+		return carton.LookupVar(key)
+	}
+
+	TOPDIR := config.GetVar(config.TOPDIR)
+	arg.Vars = map[string]string{
+		"WORKDIR": WorkDir(carton, false),
+		"TOPDIR":  TOPDIR,
+
+		"PN": carton.Provider(),
+		"S":  carton.SrcPath(arg.Wd),
+		"T":  filepath.Join(arg.Wd, "temp"),
+		"D":  filepath.Join(arg.Wd, "image"),
+
+		"IMAGEDIR": filepath.Join(TOPDIR, config.GetVar(config.IMAGEDIR),
+			config.GetVar(config.MACHINE)),
+		"STAGINGDIR": filepath.Join(TOPDIR, config.GetVar(config.STAGINGDIR)),
+
+		"TARGETARCH":   getTargetArch(carton, false),
+		"TARGETOS":     getTargetOS(carton, false),
+		"TARGETVENDOR": getTargetVendor(carton, false),
+	}
+
 }
