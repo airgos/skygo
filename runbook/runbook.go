@@ -308,10 +308,14 @@ type Arg struct {
 	// help to wrap IO based on underline IO
 	// example: use io.MultiWriter to duplicates its writes
 	output func() (stdout, stderr io.Writer)
+
+	m sync.Mutex
 }
 
 // Output return IO stdout & stderr
 func (arg *Arg) Output() (stdout, stderr io.Writer) {
+	arg.m.Lock()
+	defer arg.m.Unlock()
 	if arg.output != nil {
 		return arg.output()
 	}
@@ -320,7 +324,9 @@ func (arg *Arg) Output() (stdout, stderr io.Writer) {
 
 // SetOutput set underline IO stdout & stderr
 func (arg *Arg) SetOutput(stdout, stderr io.Writer) {
+	arg.m.Lock()
 	arg.stdout, arg.stderr = stdout, stderr
+	arg.m.Unlock()
 }
 
 type argToken string

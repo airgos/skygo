@@ -77,7 +77,6 @@ func (l *Load) put(index int) {
 }
 
 // SetOutput assign stdout & stderr for one load
-// It's not safe to invoke during loading
 func (l *Load) SetOutput(index int, stdout, stderr io.Writer) *Load {
 	l.arg[index].SetOutput(stdout,
 		io.MultiWriter(stderr, l.bufs[index]))
