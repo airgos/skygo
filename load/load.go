@@ -84,12 +84,12 @@ func (l *Load) SetOutput(index int, stdout, stderr io.Writer) *Load {
 	return l
 }
 
-func (l *Load) perform(ctx context.Context, carton carton.Builder, target string,
+func (l *Load) perform(ctx context.Context, c carton.Builder, target string,
 	nodeps bool) (err error) {
 
 	index := l.get()
 	arg := l.arg[index]
-	setupArg(carton, arg)
+	setupArg(c, arg)
 	if nodeps {
 		arg.SetOutput(os.Stdout, os.Stderr)
 	}
@@ -99,9 +99,9 @@ func (l *Load) perform(ctx context.Context, carton carton.Builder, target string
 	l.bufs[index].Reset()
 
 	if nodeps && target != "" {
-		err = carton.Runbook().Play(ctx, target)
+		err = c.Runbook().Play(ctx, target)
 	} else {
-		err = carton.Runbook().Perform(ctx, target)
+		err = c.Runbook().Perform(ctx, target)
 	}
 	l.put(index)
 
@@ -125,6 +125,7 @@ func (l *Load) run(ctx context.Context, name, target string) {
 		l.carton = name
 		return
 	}
+	setupRunbook(b.Runbook())
 
 	deps := b.BuildDepends()
 	required := b.Depends()
@@ -170,6 +171,7 @@ func (l *Load) Run(ctx context.Context, name, target string, nodeps bool) error 
 			l.carton = name
 			return l
 		}
+		setupRunbook(b.Runbook())
 		return l.perform(ctx, b, target, true)
 	}
 
@@ -247,4 +249,13 @@ func setupArg(carton carton.Builder, arg *runbook.Arg) {
 		"TARGETVENDOR": getTargetVendor(carton, false),
 	}
 
+}
+
+func setupRunbook(rb *runbook.Runbook) {
+
+	if s := rb.Stage(carton.PATCH); s != nil {
+		s.AddTask(0, func(ctx context.Context) error {
+			return patch(ctx)
+		})
+	}
 }

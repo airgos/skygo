@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package runbook
+package load
 
 import (
 	"context"
@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"merge/log"
+	"merge/runbook"
 )
 
 var patchcmd = `
@@ -34,10 +35,10 @@ git apply $PATCHFILE && {
 }
 `
 
-// Patch search patch/diff files under WorkPath, sort, then apply
-func Patch(ctx context.Context) error {
+// patch search patch/diff files under WorkPath, sort, then apply
+func patch(ctx context.Context) error {
 
-	arg, _ := FromContext(ctx)
+	arg, _ := runbook.FromContext(ctx)
 
 	file, e := os.Open(arg.Wd)
 	if e != nil {
