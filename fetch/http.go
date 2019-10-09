@@ -14,10 +14,10 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
-	"sync"
 
 	"merge/fetch/utils"
 	"merge/runbook"
+	"merge/runbook/xsync"
 )
 
 //TODO:
@@ -33,7 +33,7 @@ func httpAndUnpack(ctx context.Context, dd string, url string) error {
 
 	slice := strings.Split(url, "#")
 	if len(slice) != 2 {
-		return fmt.Errorf("%s - URL[%s] have no checksum", arg.Owner)
+		return fmt.Errorf("%s - URL[%s] have no checksum", arg.Owner, url)
 	}
 	u := slice[0]
 
@@ -84,7 +84,7 @@ func download(url, checksum, fpath string) error {
 	}
 
 	if ok, sum := utils.Sha256Matched(checksum, fpath); !ok {
-		return fmt.Errorf("ErrCheckSum: %s %s, but expect %s", fpath, sum, checksum)
+		return fmt.Errorf("ErrCheckSum: %s %s", fpath, sum)
 	}
 
 	os.Create(done)
@@ -113,17 +113,14 @@ func fetchSlice(start, stop int, url, fpath string) error {
 }
 
 func fetchInParallel(fpath, url string, length int) error {
-	var wg sync.WaitGroup
 	var e error
 
 	connections := runtime.NumCPU()
 	slices := make([]string, connections)
-	wg.Add(connections)
 
 	sub := length / connections
 	diff := length % connections
-
-	errc := make(chan error, connections)
+	g, _ := xsync.WithContext(context.Background())
 
 	for i := 0; i < connections; i++ {
 		slice := fmt.Sprintf("%s.%d", fpath, i)
@@ -134,19 +131,12 @@ func fetchInParallel(fpath, url string, length int) error {
 		if i == connections-1 {
 			stop += diff
 		}
-		go func(start, end int, url, fpath string) {
-			if e = fetchSlice(start, stop, url, fpath); e != nil {
-				errc <- e
-			}
-			wg.Done()
-		}(start, stop, url, slice)
+		g.Go(func() error {
+			return fetchSlice(start, stop, url, slice)
+		})
 	}
-	wg.Wait()
-
-	if len(errc) != 0 {
-		if e = <-errc; e != nil {
-			return e
-		}
+	if err := g.Wait(); err != nil {
+		return err
 	}
 
 	// merge file

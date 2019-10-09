@@ -17,6 +17,7 @@ import (
 
 	"merge/log"
 	"merge/runbook"
+	"merge/runbook/xsync"
 )
 
 // Resource represent state of fetch
@@ -32,11 +33,6 @@ type Resource struct {
 	done   uint32
 
 	selected string // indicated which version is selected
-
-	// save only one url failed to fetch
-	failedURL string
-	failedErr error
-	once      sync.Once
 }
 
 // SrcURL holds a collection of Source URL in specific version
@@ -173,7 +169,6 @@ func (fetch *Resource) Selected() (*SrcURL, string) {
 // if source code is updated, it calls notify
 func (fetch *Resource) Download(ctx context.Context, notify func()) error {
 
-	var wg sync.WaitGroup
 	arg, _ := runbook.FromContext(ctx)
 
 	res, _ := fetch.Selected()
@@ -184,31 +179,23 @@ func (fetch *Resource) Download(ctx context.Context, notify func()) error {
 
 	h := res.head
 
-	ctx, cancel := context.WithCancel(ctx)
-	wg.Add(h.Len())
+	g, ctx := xsync.WithContext(ctx)
 	for e := h.Front(); e != nil; e = e.Next() {
-		go func(e *list.Element) {
+		e := e // https://golang.org/doc/faq#closures_and_goroutines
+		g.Go(func() error {
 
 			fetchCmd := e.Value.(*fetchCmd)
 			if err := fetchCmd.Download(ctx, fetch); err != nil {
-				fetch.once.Do(func() {
-					fetch.failedURL = fetchCmd.url
-					fetch.failedErr = err
-					cancel()
-				})
+				return fmt.Errorf("failed to fetch %s. Reason: \n\t %s", fetchCmd.url, err)
 			}
-			wg.Done()
-		}(e)
-	}
-	wg.Wait()
-	if fetch.failedURL != "" {
-		return fmt.Errorf("failed to fetch %s. Reason: \n\t %s", fetch.failedURL, fetch.failedErr)
+			return nil
+		})
 	}
 	// TODO: extend Download to tell source code is updated
 	// if updated && notify != nil {
 	// 	notify()
 	// }
-	return nil
+	return g.Wait()
 }
 
 // PushFile push scheme file:// to SrcURL
