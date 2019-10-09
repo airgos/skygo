@@ -21,9 +21,7 @@ import (
 )
 
 //TODO:
-// get fetch thread
 // don't fetch in parallel if file size is less then 0.5M
-// trace log
 // don't unpack again if it's done
 
 // support scheme http and https. if file is archiver, unpack it
@@ -41,7 +39,7 @@ func httpAndUnpack(ctx context.Context, dd string, url string) error {
 	fpath := filepath.Join(dd, base)
 
 	fmt.Fprintf(stdout, "To download %s\n", u)
-	if e := download(u, slice[1], fpath); e != nil {
+	if e := download(ctx, u, slice[1], fpath); e != nil {
 		return e
 	}
 
@@ -54,7 +52,7 @@ func httpAndUnpack(ctx context.Context, dd string, url string) error {
 	return nil
 }
 
-func download(url, checksum, fpath string) error {
+func download(ctx context.Context, url, checksum, fpath string) error {
 
 	done := fpath + ".done"
 	if _, e := os.Stat(done); e == nil {
@@ -70,17 +68,9 @@ func download(url, checksum, fpath string) error {
 	l := h.Get("Content-Length")
 	if a != "" && l != "" {
 		length, _ := strconv.Atoi(l)
-		fetchInParallel(fpath, url, length)
+		fetchInParallel(ctx, fpath, url, length)
 	} else {
-		r, e := http.Get(url)
-		if e != nil {
-			return e
-		}
-		defer r.Body.Close()
-		e = utils.CopyFile(fpath, 0664, r.Body)
-		if e != nil {
-			return e
-		}
+		return fetchSlice(ctx, 0, 0, url, fpath)
 	}
 
 	if ok, sum := utils.Sha256Matched(checksum, fpath); !ok {
@@ -91,14 +81,16 @@ func download(url, checksum, fpath string) error {
 	return nil
 }
 
-func fetchSlice(start, stop int, url, fpath string) error {
+func fetchSlice(ctx context.Context, start, stop int, url, fpath string) error {
 
 	client := http.Client{}
-	req, e := http.NewRequest("GET", url, nil)
+	req, e := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if e != nil {
 		return e
 	}
-	req.Header.Add("Range", fmt.Sprintf("bytes=%d-%d", start, stop-1))
+	if stop > 1 {
+		req.Header.Add("Range", fmt.Sprintf("bytes=%d-%d", start, stop-1))
+	}
 
 	r, e := client.Do(req)
 	if e != nil {
@@ -112,7 +104,7 @@ func fetchSlice(start, stop int, url, fpath string) error {
 	return nil
 }
 
-func fetchInParallel(fpath, url string, length int) error {
+func fetchInParallel(ctx context.Context, fpath, url string, length int) error {
 	var e error
 
 	connections := runtime.NumCPU()
@@ -120,7 +112,7 @@ func fetchInParallel(fpath, url string, length int) error {
 
 	sub := length / connections
 	diff := length % connections
-	g, _ := xsync.WithContext(context.Background())
+	g, ctx := xsync.WithContext(ctx)
 
 	for i := 0; i < connections; i++ {
 		slice := fmt.Sprintf("%s.%d", fpath, i)
@@ -132,7 +124,7 @@ func fetchInParallel(fpath, url string, length int) error {
 			stop += diff
 		}
 		g.Go(func() error {
-			return fetchSlice(start, stop, url, slice)
+			return fetchSlice(ctx, start, stop, url, slice)
 		})
 	}
 	if err := g.Wait(); err != nil {
