@@ -19,12 +19,13 @@ import (
 	"merge/carton"
 	"merge/config"
 	"merge/runbook"
+	"merge/runbook/xsync"
 )
 
 // Load represent state of load
 type Load struct {
 	works int
-	ch    chan int
+	pool  *xsync.Pool
 
 	arg  []*runbook.Arg
 	bufs []*bytes.Buffer
@@ -32,14 +33,31 @@ type Load struct {
 	cancel context.CancelFunc
 
 	// loadError is allowed to set only once
-	loadError
+	err  loadError
 	once sync.Once
+}
+
+type pool struct {
+	arg *runbook.Arg
+	buf *bytes.Buffer
 }
 
 type loadError struct {
 	err    error
 	carton string        // error occurs on which carton
 	buf    *bytes.Buffer // hold error log message
+}
+
+func (l *loadError) Error() string {
+
+	var str strings.Builder
+
+	fmt.Fprintf(&str, "\n\x1b[0;34m❯❯❯❯❯❯❯❯❯❯❯❯  %s\x1b[0m\n%s", l.carton, l.err) // blue(34)
+	if l.buf != nil && l.buf.Len() > 0 {
+		str.WriteString(fmt.Sprintf("\n\n\x1b[0;31m%s \x1b[0m", "Error log: ↡\n")) // red(31)
+		str.Write(l.buf.Bytes())
+	}
+	return str.String()
 }
 
 // NewLoad create load to build carton
@@ -50,35 +68,31 @@ func NewLoad(num int) *Load {
 		num = runtime.NumCPU()
 	}
 	load := Load{
-		ch:    make(chan int, num),
 		arg:   make([]*runbook.Arg, num),
 		bufs:  make([]*bytes.Buffer, num),
 		works: num,
 	}
-	for i := 0; i < num; i++ {
-		arg := new(runbook.Arg)
-		load.arg[i] = arg
+	load.pool = xsync.NewPool(num, func(i int) interface{} {
+		x := pool{
+			arg: new(runbook.Arg),
+			buf: new(bytes.Buffer),
+		}
 
-		load.ch <- i
-
-		buf := new(bytes.Buffer)
-		arg.SetOutput(nil, buf)
-		load.bufs[i] = buf
-	}
+		x.arg.SetOutput(nil, x.buf)
+		load.arg[i] = x.arg
+		load.bufs[i] = x.buf
+		return &x
+	})
 
 	return &load
 }
 
-func (l *Load) get() int {
-	return <-l.ch
-}
-
-func (l *Load) put(index int) {
-	l.ch <- index
-}
-
 // SetOutput assign stdout & stderr for one load
 func (l *Load) SetOutput(index int, stdout, stderr io.Writer) *Load {
+	if index >= l.works {
+		return nil
+	}
+
 	l.arg[index].SetOutput(stdout,
 		io.MultiWriter(stderr, l.bufs[index]))
 	return l
@@ -87,31 +101,33 @@ func (l *Load) SetOutput(index int, stdout, stderr io.Writer) *Load {
 func (l *Load) perform(ctx context.Context, c carton.Builder, target string,
 	nodeps bool) (err error) {
 
-	index := l.get()
-	arg := l.arg[index]
-	setupArg(c, arg)
+	x := l.pool.Get(ctx).(*pool)
+	defer l.pool.Put(x)
+
+	setupArg(c, x.arg)
 	if nodeps {
-		arg.SetOutput(os.Stdout, os.Stderr)
+		x.arg.SetOutput(os.Stdout, os.Stderr)
 	}
-	ctx = runbook.NewContext(ctx, arg)
+	ctx = runbook.NewContext(ctx, x.arg)
 
 	// reset buffer
-	l.bufs[index].Reset()
+	x.buf.Reset()
 
 	if nodeps && target != "" {
 		err = c.Runbook().Play(ctx, target)
 	} else {
 		err = c.Runbook().Perform(ctx, target)
 	}
-	l.put(index)
 
 	if err != nil {
 		l.once.Do(func() {
-			l.carton = arg.Owner
-			l.buf = l.bufs[index]
-			l.err = err
+			l.err = loadError{
+				carton: x.arg.Owner,
+				buf:    x.buf,
+				err:    err,
+			}
 		})
-		return l
+		return &l.err
 	}
 	return nil
 }
@@ -121,33 +137,36 @@ func (l *Load) run(ctx context.Context, name, target string) {
 
 	b, _, err := carton.Find(name)
 	if err != nil {
-		l.err = err
-		l.carton = name
+		l.err = loadError{
+			carton: name,
+			err:    err,
+		}
 		return
 	}
 	setupRunbook(b.Runbook())
 
-	deps := b.BuildDepends()
-	required := b.Depends()
-	deps = append(deps, required...)
-
-	wg.Add(len(deps))
-	for _, d := range deps {
-		name := d
-		target := ""
-		if i := strings.LastIndex(d, "@"); i >= 0 {
-			name, target = d[:i], d[i+1:]
-		}
-		go func(ctx context.Context, name, target string) {
-
-			select {
-			default:
-				l.run(ctx, name, target)
-			case <-ctx.Done():
+	scan := func(deps []string) {
+		wg.Add(len(deps))
+		for _, d := range deps {
+			name := d
+			target := ""
+			if i := strings.LastIndex(d, "@"); i >= 0 {
+				name, target = d[:i], d[i+1:]
 			}
-			wg.Done()
-		}(ctx, name, target)
+			go func(ctx context.Context, name, target string) {
+
+				select {
+				default:
+					l.run(ctx, name, target)
+				case <-ctx.Done():
+				}
+				wg.Done()
+			}(ctx, name, target)
+		}
 	}
+
+	scan(b.BuildDepends())
+	scan(b.Depends())
 	wg.Wait()
 
 	if err := l.perform(ctx, b, target, false); err != nil {
@@ -167,17 +186,19 @@ func (l *Load) Run(ctx context.Context, name, target string, nodeps bool) error 
 	if nodeps {
 		b, _, err := carton.Find(name)
 		if err != nil {
-			l.err = err
-			l.carton = name
-			return l
+			l.err = loadError{
+				carton: name,
+				err:    err,
+			}
+			return &l.err
 		}
 		setupRunbook(b.Runbook())
 		return l.perform(ctx, b, target, true)
 	}
 
 	l.run(ctx, name, target)
-	if l.err != nil {
-		return l
+	if l.err.err != nil {
+		return &l.err
 	}
 	return nil
 }
@@ -200,18 +221,6 @@ func (l *Load) Clean(ctx context.Context, name string, force bool) error {
 		return tset.Run(ctx, "clean")
 	}
 	return runbook.ErrUnknownTask
-}
-
-func (l *Load) Error() string {
-
-	var str strings.Builder
-
-	fmt.Fprintf(&str, "\n\x1b[0;34m❯❯❯❯❯❯❯❯❯❯❯❯  %s\x1b[0m\n%s", l.carton, l.err) // blue(34)
-	if l.buf != nil && l.buf.Len() > 0 {
-		str.WriteString(fmt.Sprintf("\n\n\x1b[0;31m%s \x1b[0m", "Error log: ↡\n")) // red(31)
-		str.Write(l.buf.Bytes())
-	}
-	return str.String()
 }
 
 func setupArg(carton carton.Builder, arg *runbook.Arg) {
