@@ -143,7 +143,7 @@ func (l *Load) run(ctx context.Context, name, target string) {
 		}
 		return
 	}
-	setupRunbook(b.Runbook())
+	SetupRunbook(b.Runbook())
 
 	scan := func(deps []string) {
 		wg.Add(len(deps))
@@ -192,7 +192,7 @@ func (l *Load) Run(ctx context.Context, name, target string, nodeps bool) error 
 			}
 			return &l.err
 		}
-		setupRunbook(b.Runbook())
+		SetupRunbook(b.Runbook())
 		return l.perform(ctx, b, target, true)
 	}
 
@@ -260,7 +260,7 @@ func setupArg(carton carton.Builder, arg *runbook.Arg) {
 
 }
 
-func setupRunbook(rb *runbook.Runbook) {
+func SetupRunbook(rb *runbook.Runbook) {
 
 	if s := rb.Stage(carton.PATCH); s != nil {
 		s.AddTask(0, func(ctx context.Context) error {

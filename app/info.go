@@ -33,6 +33,7 @@ func (*info) Run(ctx context.Context, args ...string) error {
 	if virtual {
 		fmt.Printf("%s --> %s\n\n", args[0], c.Provider())
 	}
+	load.SetupRunbook(c.Runbook())
 
 	show(c)
 
