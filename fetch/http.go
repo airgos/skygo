@@ -21,7 +21,6 @@ import (
 )
 
 //TODO:
-// don't fetch in parallel if file size is less then 0.5M
 // don't unpack again if it's done
 
 // support scheme http and https. if file is archiver, unpack it
@@ -63,11 +62,14 @@ func download(ctx context.Context, url, checksum, fpath string) error {
 		return e
 	}
 	defer r.Body.Close()
+
 	h := r.Header
 	a := h.Get("Accept-Ranges")
 	l := h.Get("Content-Length")
-	if a != "" && l != "" {
-		length, _ := strconv.Atoi(l)
+
+	length, _ := strconv.Atoi(l)
+	// don't fetch in parallel if file size is less then 0.5M=0.5*1024*1024
+	if a != "" && length > 524288 {
 		fetchInParallel(ctx, fpath, url, length)
 	} else {
 		return fetchSlice(ctx, 0, 0, url, fpath)
