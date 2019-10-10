@@ -208,7 +208,11 @@ func (l *Load) Clean(ctx context.Context, name string, force bool) error {
 
 	c, _, err := carton.Find(name)
 	if err != nil {
-		return err
+		l.err = loadError{
+			carton: name,
+			err:    err,
+		}
+		return &l.err
 	}
 
 	if force {
@@ -216,11 +220,8 @@ func (l *Load) Clean(ctx context.Context, name string, force bool) error {
 		return nil
 	}
 
-	tset := c.Runbook().TaskSet()
-	if tset.Has("clean") {
-		return tset.Run(ctx, "clean")
-	}
-	return runbook.ErrUnknownTask
+	// TODO: only run if FETCH was performed successfully
+	return l.perform(ctx, c, "clean", true)
 }
 
 func setupArg(carton carton.Builder, arg *runbook.Arg) {
