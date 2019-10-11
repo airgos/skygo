@@ -78,7 +78,7 @@ func NewLoad(num int) *Load {
 			buf: new(bytes.Buffer),
 		}
 
-		x.arg.SetOutput(nil, x.buf)
+		x.arg.SetUnderOutput(nil, x.buf)
 		load.arg[i] = x.arg
 		load.bufs[i] = x.buf
 		return &x
@@ -93,7 +93,7 @@ func (l *Load) SetOutput(index int, stdout, stderr io.Writer) *Load {
 		return nil
 	}
 
-	l.arg[index].SetOutput(stdout,
+	l.arg[index].SetUnderOutput(stdout,
 		io.MultiWriter(stderr, l.bufs[index]))
 	return l
 }
@@ -106,12 +106,15 @@ func (l *Load) perform(ctx context.Context, c carton.Builder, target string,
 
 	setupArg(c, x.arg)
 	if nodeps {
-		x.arg.SetOutput(os.Stdout, os.Stderr)
+		x.arg.SetUnderOutput(os.Stdout, os.Stderr)
 	}
 	ctx = runbook.NewContext(ctx, x.arg)
 
 	// reset buffer
 	x.buf.Reset()
+
+	// mkdir temp
+	os.MkdirAll(x.arg.Vars["T"], 0755)
 
 	if nodeps && target != "" {
 		err = c.Runbook().Play(ctx, target)
@@ -268,4 +271,5 @@ func SetupRunbook(rb *runbook.Runbook) {
 			return patch(ctx)
 		})
 	}
+	addEventListener(rb)
 }

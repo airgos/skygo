@@ -8,10 +8,7 @@ import (
 	"container/list"
 	"context"
 	"errors"
-	"fmt"
 	"io"
-	"os"
-	"path/filepath"
 	"sync"
 	"sync/atomic"
 
@@ -258,29 +255,6 @@ func (s *Stage) Play(ctx context.Context) error {
 			return err
 		}
 
-		dir := filepath.Join(arg.Wd, "temp")
-		os.MkdirAll(dir, 0755)
-
-		logo := filepath.Join(dir, s.name+".log")
-		file, err := os.Create(logo)
-		if err != nil {
-			return fmt.Errorf("Failed to create %s", logo)
-		}
-		defer file.Close()
-
-		arg.output = func() (stdout, stderr io.Writer) {
-			stdout = file
-			stderr = file
-			if arg.stdout != nil {
-
-				stdout = io.MultiWriter(arg.stdout, file)
-			}
-			if arg.stderr != nil {
-				stderr = io.MultiWriter(arg.stderr, file)
-			}
-			return
-		}
-
 		if err := s.tasks.Play(ctx); err != nil {
 			return err
 		}
@@ -322,7 +296,7 @@ type Arg struct {
 
 	// help to wrap IO based on underline IO
 	// example: use io.MultiWriter to duplicates its writes
-	output func() (stdout, stderr io.Writer)
+	Writer func() (stdout, stderr io.Writer)
 
 	m sync.Mutex
 }
@@ -331,14 +305,19 @@ type Arg struct {
 func (arg *Arg) Output() (stdout, stderr io.Writer) {
 	arg.m.Lock()
 	defer arg.m.Unlock()
-	if arg.output != nil {
-		return arg.output()
+	if arg.Writer != nil {
+		return arg.Writer()
 	}
 	return arg.stdout, arg.stderr
 }
 
-// SetOutput set underline IO stdout & stderr
-func (arg *Arg) SetOutput(stdout, stderr io.Writer) {
+// UnderOutput return IO stdout & stderr
+func (arg *Arg) UnderOutput() (stdout, stderr io.Writer) {
+	return arg.stdout, arg.stderr
+}
+
+// SetUnderOutput set underline IO stdout & stderr
+func (arg *Arg) SetUnderOutput(stdout, stderr io.Writer) {
 	arg.m.Lock()
 	arg.stdout, arg.stderr = stdout, stderr
 	arg.m.Unlock()
