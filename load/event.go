@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"merge/log"
 	"merge/runbook"
 )
 
@@ -17,6 +18,8 @@ func addEventListener(rb *runbook.Runbook) {
 
 	for stage := rb.Head(); stage != nil; stage = stage.Next() {
 		stage.PushInOut(logfileEnter, logfileExit)
+		stage.PushInOut(stageStatus, stageSetDone)
+		stage.PushReset(stageReset)
 	}
 }
 
@@ -49,4 +52,29 @@ func logfileEnter(stage string, arg *runbook.Arg) (bool, interface{}, error) {
 		return stdout, stderr
 	}
 	return false, file, nil
+}
+
+func stageSetDone(stage string, arg *runbook.Arg, x interface{}) error {
+
+	done := x.(string)
+	os.Create(done)
+	return nil
+}
+
+func stageStatus(stage string, arg *runbook.Arg) (bool, interface{}, error) {
+
+	done := filepath.Join(arg.Vars["T"], stage+".done")
+
+	if _, err := os.Stat(done); err == nil {
+		log.Trace("%s was executed last time, skip it!", stage)
+		return true, nil, nil
+	}
+	return false, done, nil
+}
+
+func stageReset(stage string, arg *runbook.Arg) error {
+
+	done := filepath.Join(arg.Vars["T"], stage+".done")
+	os.Remove(done)
+	return nil
 }
