@@ -119,7 +119,7 @@ func (l *Load) perform(ctx context.Context, c carton.Builder, target string,
 	if nodeps && target != "" {
 		err = c.Runbook().Play(ctx, target)
 	} else {
-		err = c.Runbook().Perform(ctx, target)
+		err = c.Runbook().Range(ctx, target)
 	}
 
 	if err != nil {

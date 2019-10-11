@@ -126,10 +126,10 @@ func (rb *Runbook) RunTask(ctx context.Context, name string) error {
 	return rb.taskset.Run(ctx, name)
 }
 
-// Perform carry out all stages in the runbook
-// Break if any stage failed
-// Break if current stage is @name
-func (rb *Runbook) Perform(ctx context.Context, name string) error {
+// Range iterates all stages and execute Play in the runbook
+// Abort if any stage failed
+// After invoking Play, abort if current stage is @name
+func (rb *Runbook) Range(ctx context.Context, name string) error {
 
 	for stage := rb.Head(); stage != nil; stage = stage.Next() {
 		if stage.tasks.Len() > 0 {
