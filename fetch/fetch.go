@@ -167,7 +167,8 @@ func (fetch *Resource) Selected() (*SrcURL, string) {
 // Download download all source URL held by selected SrcURL
 // Extract automatically if source URL is an archiver, like tar.bz2
 // if source code is updated, it calls notify
-func (fetch *Resource) Download(ctx context.Context, notify func()) error {
+func (fetch *Resource) Download(ctx context.Context,
+	notify func(ctx context.Context)) error {
 
 	arg, _ := runbook.FromContext(ctx)
 
@@ -193,7 +194,7 @@ func (fetch *Resource) Download(ctx context.Context, notify func()) error {
 	}
 	// TODO: extend Download to tell source code is updated
 	// if updated && notify != nil {
-	// 	notify()
+	// 	notify(ctx)
 	// }
 	return g.Wait()
 }

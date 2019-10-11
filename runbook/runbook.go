@@ -44,6 +44,9 @@ type Stage struct {
 
 	m        sync.Mutex
 	executed uint32 // executed ?
+
+	// inherits event listeners
+	listeners
 }
 
 // NewRunbook create a Runbook
@@ -166,6 +169,10 @@ func newStage(name string) *Stage {
 		tasks: newTaskSet(),
 	}
 
+	// init event listeners
+	stage.inout.Init()
+	stage.reset.Init()
+
 	stage.tasks.routine = name
 	return &stage
 }
@@ -223,7 +230,10 @@ func (s *Stage) DelTask(weight int) {
 }
 
 // Reset clear executed status, then s.Play can be run again
-func (s *Stage) Reset() {
+func (s *Stage) Reset(ctx context.Context) {
+
+	arg, _ := FromContext(ctx)
+	s.RangeReset(s.name, arg)
 
 	s.m.Lock()
 	defer s.m.Unlock()
@@ -237,14 +247,17 @@ func (s *Stage) Play(ctx context.Context) error {
 		return nil
 	}
 
-	// TODO:
-	// read record to check whether it's executed last time
-
 	s.m.Lock()
 	defer s.m.Unlock()
 	if s.executed == 0 {
 
+		defer atomic.StoreUint32(&s.executed, 1)
+
 		arg, _ := FromContext(ctx)
+		if handled, err := s.RangeIn(s.name, arg); handled || err != nil {
+			return err
+		}
+
 		dir := filepath.Join(arg.Wd, "temp")
 		os.MkdirAll(dir, 0755)
 
@@ -268,8 +281,10 @@ func (s *Stage) Play(ctx context.Context) error {
 			return
 		}
 
-		defer atomic.StoreUint32(&s.executed, 1)
-		return s.tasks.Play(ctx)
+		if err := s.tasks.Play(ctx); err != nil {
+			return err
+		}
+		return s.RangeOut(s.name, arg)
 	}
 	return nil
 }

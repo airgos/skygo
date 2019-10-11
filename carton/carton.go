@@ -75,10 +75,10 @@ func NewCarton(name string, m func(c *Carton)) {
 			os.MkdirAll(arg.Wd, 0755)
 			return c.fetch.Download(ctx,
 				// reset subsequent stages
-				func() {
+				func(ctx context.Context) {
 					log.Trace("Reset subsequent stages because fetch found new code")
 					for stage := fetch.Next(); stage != nil; stage = stage.Next() {
-						stage.Reset()
+						stage.Reset(ctx)
 					}
 				})
 		})
