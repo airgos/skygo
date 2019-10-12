@@ -17,7 +17,7 @@ type Modifier interface {
 	AddFilePath(dir string) error
 
 	// Set where source code is explicitly
-	SetSrcPath(dir string) error
+	SetSrcDir(dir string) error
 
 	// used to update dependency
 	// dep format: cartonName[@stageName]
@@ -75,7 +75,7 @@ type Builder interface {
 	VisitVars(f func(key, value string))
 
 	// return where source code is under WORKDIR
-	SrcPath(wd string) string
+	SrcDir(wd string) string
 
 	// FilesPath return a collection of directory that's be used for locating local file
 	FilesPath() []string

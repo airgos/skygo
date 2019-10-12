@@ -237,7 +237,7 @@ func setupArg(carton carton.Builder, arg *runbook.Arg, isNative bool) {
 	arg.Owner = carton.Provider()
 	arg.FilesPath = carton.FilesPath()
 	arg.Wd = WorkDir(carton, isNative)
-	arg.SrcDir = carton.SrcPath
+	arg.SrcDir = carton.SrcDir
 	arg.VisitVars = func(fn func(key, value string)) {
 		carton.VisitVars(fn)
 	}

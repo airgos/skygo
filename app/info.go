@@ -83,7 +83,7 @@ func show(h carton.Builder, isNative bool) {
 	fmt.Println("==> Path")
 	wd := load.WorkDir(h, isNative)
 	fmt.Println("WORKDIR:", wd)
-	fmt.Println("SRCDIR: ", h.SrcPath(wd))
+	fmt.Println("SRCDIR: ", h.SrcDir(wd))
 
 	filespath := h.FilesPath()
 	fmt.Println("FilesPath:", filespath[0])

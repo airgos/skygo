@@ -167,9 +167,9 @@ func (c *Carton) Depends(dep ...string) []string {
 	return c.depends
 }
 
-// SrcPath return where source code is under WORKDIR
+// SrcDir return where source code is under WORKDIR
 // WORKDIR depends on ARCH. one carton has different WORKDIR for different ARCH
-func (c *Carton) SrcPath(wd string) string {
+func (c *Carton) SrcDir(wd string) string {
 
 	if c.srcpath != "" {
 		d := filepath.Join(wd, c.srcpath)
@@ -194,8 +194,8 @@ func (c *Carton) SrcPath(wd string) string {
 	return ""
 }
 
-// SetSrcPath set SrcPath explicitily. dir msut be a relative path that's under WORKDIR
-func (c *Carton) SetSrcPath(dir string) error {
+// SetSrcDir set SrcDir explicitily. dir msut be a relative path that's under WORKDIR
+func (c *Carton) SetSrcDir(dir string) error {
 	if filepath.IsAbs(dir) {
 		return ErrAbsPath
 	}
