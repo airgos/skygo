@@ -25,7 +25,13 @@ var (
 
 // Runbook consists of a series of stage and a independent taskset
 type Runbook struct {
-	head    *list.List
+	head *list.List
+
+	// inherits event listeners
+	// it's for independent TaskSet
+	listeners
+
+	//independent TaskSet
 	taskset *TaskSet
 }
 
@@ -51,6 +57,8 @@ func NewRunbook() *Runbook {
 	this := new(Runbook)
 	this.head = list.New()
 	this.taskset = newTaskSet()
+	this.listeners.inout.Init()
+	this.listeners.reset.Init()
 	return this
 }
 
@@ -123,7 +131,17 @@ func (rb *Runbook) TaskSet() *TaskSet {
 
 // RunTask play one task in dependent taskset
 func (rb *Runbook) RunTask(ctx context.Context, name string) error {
-	return rb.taskset.Run(ctx, name)
+
+	log.Trace("Run independent task: %s", name)
+	arg, _ := FromContext(ctx)
+	if handled, err := rb.RangeIn(name, arg); handled || err != nil {
+		return err
+	}
+
+	if err := rb.taskset.Run(ctx, name); err != nil {
+		return err
+	}
+	return rb.RangeOut(name, arg)
 }
 
 // Range iterates all stages and execute Play in the runbook
@@ -167,8 +185,8 @@ func newStage(name string) *Stage {
 	}
 
 	// init event listeners
-	stage.inout.Init()
-	stage.reset.Init()
+	stage.listeners.inout.Init()
+	stage.listeners.reset.Init()
 
 	stage.tasks.routine = name
 	return &stage
