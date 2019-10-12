@@ -99,12 +99,12 @@ func (l *Load) SetOutput(index int, stdout, stderr io.Writer) *Load {
 }
 
 func (l *Load) perform(ctx context.Context, c carton.Builder, target string,
-	nodeps bool) (err error) {
+	nodeps bool, isNative bool) (err error) {
 
 	x := l.pool.Get(ctx).(*pool)
 	defer l.pool.Put(x)
 
-	setupArg(c, x.arg)
+	setupArg(c, x.arg, isNative)
 	if nodeps {
 		x.arg.SetUnderOutput(os.Stdout, os.Stderr)
 	}
@@ -135,10 +135,10 @@ func (l *Load) perform(ctx context.Context, c carton.Builder, target string,
 	return nil
 }
 
-func (l *Load) run(ctx context.Context, name, target string) {
+func (l *Load) run(ctx context.Context, name, target string, isNative bool) {
 	var wg sync.WaitGroup
 
-	b, _, err := carton.Find(name)
+	b, _, native, err := carton.Find(name)
 	if err != nil {
 		l.err = loadError{
 			carton: name,
@@ -146,6 +146,11 @@ func (l *Load) run(ctx context.Context, name, target string) {
 		}
 		return
 	}
+	// inherits isNative
+	if native {
+		isNative = true
+	}
+
 	SetupRunbook(b.Runbook())
 
 	scan := func(deps []string) {
@@ -160,7 +165,7 @@ func (l *Load) run(ctx context.Context, name, target string) {
 
 				select {
 				default:
-					l.run(ctx, name, target)
+					l.run(ctx, name, target, isNative)
 				case <-ctx.Done():
 				}
 				wg.Done()
@@ -172,7 +177,7 @@ func (l *Load) run(ctx context.Context, name, target string) {
 	scan(b.Depends())
 	wg.Wait()
 
-	if err := l.perform(ctx, b, target, false); err != nil {
+	if err := l.perform(ctx, b, target, false, isNative); err != nil {
 		l.cancel()
 	}
 }
@@ -187,7 +192,8 @@ func (l *Load) Run(ctx context.Context, name, target string, nodeps bool) error 
 	os.MkdirAll(config.GetVar(config.DLDIR), 0755)
 
 	if nodeps {
-		b, _, err := carton.Find(name)
+
+		b, _, isNative, err := carton.Find(name)
 		if err != nil {
 			l.err = loadError{
 				carton: name,
@@ -196,10 +202,10 @@ func (l *Load) Run(ctx context.Context, name, target string, nodeps bool) error 
 			return &l.err
 		}
 		SetupRunbook(b.Runbook())
-		return l.perform(ctx, b, target, true)
+		return l.perform(ctx, b, target, true, isNative)
 	}
 
-	l.run(ctx, name, target)
+	l.run(ctx, name, target, false)
 	if l.err.err != nil {
 		return &l.err
 	}
@@ -209,7 +215,7 @@ func (l *Load) Run(ctx context.Context, name, target string, nodeps bool) error 
 // Clean invokes carton's method Clean
 func (l *Load) Clean(ctx context.Context, name string, force bool) error {
 
-	c, _, err := carton.Find(name)
+	c, _, isNative, err := carton.Find(name)
 	if err != nil {
 		l.err = loadError{
 			carton: name,
@@ -219,18 +225,18 @@ func (l *Load) Clean(ctx context.Context, name string, force bool) error {
 	}
 
 	if force {
-		os.RemoveAll(WorkDir(c, false))
+		os.RemoveAll(WorkDir(c, isNative))
 		return nil
 	}
 	addEventListener(c.Runbook())
-	return l.perform(ctx, c, "clean", true)
+	return l.perform(ctx, c, "clean", true, isNative)
 }
 
-func setupArg(carton carton.Builder, arg *runbook.Arg) {
+func setupArg(carton carton.Builder, arg *runbook.Arg, isNative bool) {
 
 	arg.Owner = carton.Provider()
 	arg.FilesPath = carton.FilesPath()
-	arg.Wd = WorkDir(carton, false)
+	arg.Wd = WorkDir(carton, isNative)
 	arg.SrcDir = carton.SrcPath
 	arg.VisitVars = func(fn func(key, value string)) {
 		carton.VisitVars(fn)
@@ -244,8 +250,9 @@ func setupArg(carton carton.Builder, arg *runbook.Arg) {
 
 	TOPDIR := config.GetVar(config.TOPDIR)
 	arg.Vars = map[string]string{
-		"WORKDIR": WorkDir(carton, false),
-		"TOPDIR":  TOPDIR,
+		"ISNATIVE": fmt.Sprintf("%v", isNative),
+		"WORKDIR":  WorkDir(carton, isNative),
+		"TOPDIR":   TOPDIR,
 
 		"PN": carton.Provider(),
 		"S":  carton.SrcPath(arg.Wd),
@@ -256,9 +263,9 @@ func setupArg(carton carton.Builder, arg *runbook.Arg) {
 			config.GetVar(config.MACHINE)),
 		"STAGINGDIR": filepath.Join(TOPDIR, config.GetVar(config.STAGINGDIR)),
 
-		"TARGETARCH":   getTargetArch(carton, false),
-		"TARGETOS":     getTargetOS(carton, false),
-		"TARGETVENDOR": getTargetVendor(carton, false),
+		"TARGETARCH":   getTargetArch(carton, isNative),
+		"TARGETOS":     getTargetOS(carton, isNative),
+		"TARGETVENDOR": getTargetVendor(carton, isNative),
 	}
 
 }

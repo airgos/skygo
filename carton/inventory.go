@@ -7,9 +7,11 @@ package carton
 import (
 	"context"
 	"fmt"
-	"merge/log"
 	"runtime"
+	"strings"
 	"sync"
+
+	"merge/log"
 )
 
 // hold all carton and its variants
@@ -103,18 +105,25 @@ func Update(name string, m func(Modifier)) {
 }
 
 // Find find the carton by name
+// if name have suffix "-native", isNative is true and trim it before
+// finding in database
 // if not found, return ErrNotFound
-func Find(name string) (h Builder, isVirtual bool, e error) {
+func Find(name string) (h Builder, isVirtual bool, isNative bool, err error) {
+
+	if strings.HasSuffix(name, "-native") {
+		isNative = true
+		name = strings.TrimSuffix(name, "-native")
+	}
 
 	// TODO: handle if exist in both inventory
 	if carton, ok := inventory[name]; ok {
-		return carton, false, nil
+		return carton, false, isNative, nil
 	}
 
 	if virtual, ok := virtualInventory[name]; ok {
-		return virtual, true, nil
+		return virtual, true, isNative, nil
 	}
-	return nil, true, ErrNotFound
+	return nil, true, isNative, ErrNotFound
 }
 
 // BuildInventory build carton warehouse and then check whether each carton has
@@ -272,7 +281,7 @@ func (d *dfs) cyclicUtil(ctx context.Context, vertex string) error {
 
 func adjacentEdges(name string) ([]string, error) {
 
-	b, _, e := Find(name)
+	b, _, _, e := Find(name)
 	if e != nil {
 		return nil, fmt.Errorf("carton %s: %s", name, e)
 	}

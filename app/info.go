@@ -25,7 +25,7 @@ func (*info) Run(ctx context.Context, args ...string) error {
 		return commandLineErrorf("carton name must be supplied")
 	}
 
-	c, virtual, e := carton.Find(args[0])
+	c, virtual, isNative, e := carton.Find(args[0])
 	if e != nil {
 		return fmt.Errorf("carton %s is %v", args[0], e)
 	}
@@ -35,12 +35,12 @@ func (*info) Run(ctx context.Context, args ...string) error {
 	}
 	load.SetupRunbook(c.Runbook())
 
-	show(c)
+	show(c, isNative)
 
 	return nil
 }
 
-func show(h carton.Builder) {
+func show(h carton.Builder, isNative bool) {
 
 	// TODO:
 	// indicates whether it is installed
@@ -81,7 +81,7 @@ func show(h carton.Builder) {
 	}
 
 	fmt.Println("==> Path")
-	wd := load.WorkDir(h, false)
+	wd := load.WorkDir(h, isNative)
 	fmt.Println("WORKDIR:", wd)
 	fmt.Println("SRCDIR: ", h.SrcPath(wd))
 
