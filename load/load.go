@@ -255,7 +255,6 @@ func setupArg(carton carton.Builder, arg *runbook.Arg, isNative bool) {
 		"TOPDIR":   TOPDIR,
 
 		"PN": carton.Provider(),
-		"S":  carton.SrcPath(arg.Wd),
 		"T":  filepath.Join(arg.Wd, "temp"),
 		"D":  filepath.Join(arg.Wd, "image"),
 

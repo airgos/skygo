@@ -10,11 +10,16 @@ import (
 	"os"
 	"path/filepath"
 
+	"merge/carton"
 	"merge/log"
 	"merge/runbook"
 )
 
 func addEventListener(rb *runbook.Runbook) {
+
+	if stage := rb.Stage(carton.BUILD); stage != nil {
+		stage.PushInOut(tryToSetVarS, nil)
+	}
 
 	for stage := rb.Head(); stage != nil; stage = stage.Next() {
 		stage.PushInOut(logfileEnter, logfileExit)
@@ -93,6 +98,22 @@ func cleanTask(task string, arg *runbook.Arg) (bool, interface{}, error) {
 		if _, err := os.Stat(dir); err != nil {
 			return true, nil, nil
 		}
+	}
+	return false, nil, nil
+}
+
+func tryToSetVarS(stage string, arg *runbook.Arg) (bool, interface{}, error) {
+
+	if arg.Vars["S"] != "" {
+		return false, nil, nil
+	}
+
+	c, _, _, _ := carton.Find(arg.Owner)
+	if dir := c.SrcDir(arg.Wd); dir == "" {
+		return false, nil,
+			fmt.Errorf("SrcDir is empty! Please try to set by SetSrcDir explicitily.")
+	} else {
+		arg.Vars["S"] = dir
 	}
 	return false, nil, nil
 }

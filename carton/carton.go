@@ -190,7 +190,6 @@ func (c *Carton) SrcDir(wd string) string {
 		return d
 	}
 
-	log.Warning("Don't know where SrcPath is. Please set it by SetSrcPath explicitily")
 	return ""
 }
 
