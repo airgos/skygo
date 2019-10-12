@@ -21,6 +21,7 @@ func addEventListener(rb *runbook.Runbook) {
 		stage.PushInOut(stageStatus, stageSetDone)
 		stage.PushReset(stageReset)
 	}
+	rb.PushInOut(cleanTask, nil)
 }
 
 func logfileExit(name string, arg *runbook.Arg, x interface{}) error {
@@ -77,4 +78,21 @@ func stageReset(stage string, arg *runbook.Arg) error {
 	done := filepath.Join(arg.Vars["T"], stage+".done")
 	os.Remove(done)
 	return nil
+}
+
+func cleanTask(task string, arg *runbook.Arg) (bool, interface{}, error) {
+	if task == "clean" {
+		os.RemoveAll(arg.Vars["T"])
+
+		// only run clean task if S does exist
+		dir := arg.Vars["S"]
+		if dir == "" {
+			return true, nil, nil
+		}
+
+		if _, err := os.Stat(dir); err != nil {
+			return true, nil, nil
+		}
+	}
+	return false, nil, nil
 }

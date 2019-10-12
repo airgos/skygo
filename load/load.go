@@ -222,8 +222,7 @@ func (l *Load) Clean(ctx context.Context, name string, force bool) error {
 		os.RemoveAll(WorkDir(c, false))
 		return nil
 	}
-
-	// TODO: only run if FETCH was performed successfully
+	addEventListener(c.Runbook())
 	return l.perform(ctx, c, "clean", true)
 }
 
