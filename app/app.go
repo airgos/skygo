@@ -31,6 +31,11 @@ type Application interface {
 	Run(ctx context.Context, args ...string) error
 }
 
+// Exit should be called when Application exit
+type Exit interface {
+	Clean()
+}
+
 type commandLineError string
 
 func (e commandLineError) Error() string {
@@ -61,6 +66,9 @@ func Main(ctx context.Context, app Application, args []string) {
 
 	s.Parse(args)
 	e := app.Run(ctx, s.Args()...)
+	if exit, ok := app.(Exit); ok {
+		exit.Clean()
+	}
 	if e != nil {
 		fmt.Fprintf(s.Output(), "%s\n", e)
 		if _, ok := e.(commandLineError); ok {

@@ -9,23 +9,47 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"os/signal"
+	"path/filepath"
+	"syscall"
 
 	"merge/carton"
+	"merge/config"
 	"merge/log"
 )
 
 // App implement interface Application
 type App struct {
 	name     string
+	lockfile string
 	LogLevel string `flag:"loglevel" help:"Log Level: trace, info, warning(default), error"`
 }
 
-// New create top Application
-func New() Application {
+// New create top app that implement Application
+func New() *App {
 	app := new(App)
 	app.name = "merge"
+
+	buildir := config.GetVar(config.BUILDIR)
+	app.lockfile = filepath.Join(buildir, app.name+".lockfile")
+
+	if _, err := os.Stat(app.lockfile); err == nil {
+		fmt.Printf("another instance %s is running", app.name)
+		os.Exit(0)
+	}
+	os.Create(app.lockfile)
+
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		<-sigs
+		os.Remove(app.lockfile)
+	}()
 	return app
 }
+
+// Clean cleanup App
+func (app *App) Clean() { os.Remove(app.lockfile) }
 
 // Name implement Application.Name
 func (app *App) Name() string { return app.name }
