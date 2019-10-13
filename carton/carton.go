@@ -144,26 +144,36 @@ func (c *Carton) From(file ...string) []string {
 }
 
 // BuildDepends add depends only required for building from scratch
-// dep format: cartonName[@stageName]
+// dep format: cartonName[@stageName] or carton group
+// carton group is a collection of cartonName[@stageName] with delimiter space
 // Always return the same kind of depends
-func (c *Carton) BuildDepends(dep ...string) []string {
+func (c *Carton) BuildDepends(deps ...string) []string {
 
-	if len(dep) == 0 {
+	if len(deps) == 0 {
 		return c.buildDepends
 	}
-	c.buildDepends = append(c.buildDepends, dep...)
+	for _, dep := range deps {
+		for _, d := range strings.Fields(dep) {
+			c.buildDepends = append(c.buildDepends, d)
+		}
+	}
 	return c.buildDepends
 }
 
 // Depends add depends required for building from scratch, running or both
-// dep format: cartonName[@stageName]
+// dep format: cartonName[@stageName] or carton group
+// carton group is a collection of cartonName[@stageName] with delimiter space
 // Always return the same kind of depends
-func (c *Carton) Depends(dep ...string) []string {
+func (c *Carton) Depends(deps ...string) []string {
 
-	if len(dep) == 0 {
+	if len(deps) == 0 {
 		return c.depends
 	}
-	c.depends = append(c.depends, dep...)
+	for _, dep := range deps {
+		for _, d := range strings.Fields(dep) {
+			c.depends = append(c.depends, d)
+		}
+	}
 	return c.depends
 }
 
