@@ -14,7 +14,7 @@ import (
 	"merge/runbook"
 )
 
-func file(ctx context.Context, url string) error {
+func file(ctx context.Context, url string, updated *bool) error {
 
 	arg, _ := runbook.FromContext(ctx)
 	stdout, _ := arg.Output()

@@ -45,17 +45,19 @@ type fetchCmd struct {
 	url   string
 }
 
-func (cmd *fetchCmd) Download(ctx context.Context, res *Resource) error {
+// Download grab url in Resource
+// only set updated when source code change is detected
+func (cmd *fetchCmd) Download(ctx context.Context, res *Resource, updated *bool) error {
 
 	switch m := cmd.fetch.(type) {
 
 	// scheme file: handler
-	case func(context.Context, string) error:
-		return m(ctx, cmd.url)
+	case func(context.Context, string, *bool) error:
+		return m(ctx, cmd.url, updated)
 
 	// for http,https,vscGit
-	case func(context.Context, string, string) error:
-		return m(ctx, res.dd, cmd.url)
+	case func(context.Context, string, string, *bool) error:
+		return m(ctx, res.dd, cmd.url, updated)
 
 	default:
 		return errors.New("Unknown fetch command")
@@ -180,23 +182,28 @@ func (fetch *Resource) Download(ctx context.Context,
 
 	h := res.head
 
+	updated := false
 	g, ctx := xsync.WithContext(ctx)
 	for e := h.Front(); e != nil; e = e.Next() {
 		e := e // https://golang.org/doc/faq#closures_and_goroutines
 		g.Go(func() error {
 
 			fetchCmd := e.Value.(*fetchCmd)
-			if err := fetchCmd.Download(ctx, fetch); err != nil {
+			if err := fetchCmd.Download(ctx, fetch, &updated); err != nil {
 				return fmt.Errorf("failed to fetch %s. Reason: \n\t %s", fetchCmd.url, err)
 			}
 			return nil
 		})
 	}
-	// TODO: extend Download to tell source code is updated
-	// if updated && notify != nil {
-	// 	notify(ctx)
-	// }
-	return g.Wait()
+
+	if err := g.Wait(); err != nil {
+		return err
+	}
+
+	if updated && notify != nil {
+		notify(ctx)
+	}
+	return nil
 }
 
 // PushFile push scheme file:// to SrcURL

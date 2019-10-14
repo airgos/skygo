@@ -177,7 +177,7 @@ func (vcs *vcsCmd) syncTag() error {
 	return nil
 }
 
-func vcsFetch(ctx context.Context, dd string, url string) error {
+func vcsFetch(ctx context.Context, dd string, url string, updated *bool) error {
 
 	arg, _ := runbook.FromContext(ctx)
 	repo := url
