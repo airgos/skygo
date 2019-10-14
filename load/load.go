@@ -251,10 +251,13 @@ func setupArg(carton carton.Builder, arg *runbook.Arg, isNative bool) {
 	TOPDIR := config.GetVar(config.TOPDIR)
 	arg.Vars = map[string]string{
 		"ISNATIVE": fmt.Sprintf("%v", isNative),
-		"WORKDIR":  WorkDir(carton, isNative),
-		"TOPDIR":   TOPDIR,
+
+		"WORKDIR": WorkDir(carton, isNative),
+		"TOPDIR":  TOPDIR,
+		"BUILDIR": config.GetVar(config.BUILDIR),
 
 		"PN": carton.Provider(),
+		"S":  carton.SrcDir(arg.Wd),
 		"T":  filepath.Join(arg.Wd, "temp"),
 		"D":  filepath.Join(arg.Wd, "image"),
 

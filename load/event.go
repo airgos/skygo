@@ -17,8 +17,12 @@ import (
 
 func addEventListener(rb *runbook.Runbook) {
 
-	if stage := rb.Stage(carton.BUILD); stage != nil {
-		stage.PushInOut(tryToSetVarS, nil)
+	// before souce code is fetched, generally var S is empty.
+	// call tryToSetVarS after fetch stage to update var S
+	if stage := rb.Stage(carton.FETCH); stage != nil {
+		if stage := stage.Next(); stage != nil {
+			stage.PushInOut(tryToSetVarS, nil)
+		}
 	}
 
 	for stage := rb.Head(); stage != nil; stage = stage.Next() {
