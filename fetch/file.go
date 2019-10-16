@@ -5,13 +5,18 @@
 package fetch
 
 import (
+	"bytes"
 	"context"
+	"crypto/md5"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 
 	"merge/fetch/utils"
 	"merge/runbook"
+	"merge/runbook/xsync"
 )
 
 func file(ctx context.Context, url string, updated *bool) error {
@@ -19,24 +24,67 @@ func file(ctx context.Context, url string, updated *bool) error {
 	arg, _ := runbook.FromContext(ctx)
 	stdout, _ := arg.Output()
 
-	// skip file://
 	url = url[7:]
-	for _, d := range arg.FilesPath {
+	for _, u := range arg.FilesPath {
 
-		path := filepath.Join(d, url)
-		fileinfo, err := os.Stat(path)
-		if err != nil {
-			return err
+		from := filepath.Join(u, url)
+		if _, err := os.Stat(from); err != nil {
+			continue // not found
 		}
-		file, err := os.Open(path)
-		if err != nil {
-			return err
+
+		target := filepath.Join(arg.Wd, url)
+		os.MkdirAll(filepath.Dir(target), 0755)
+		changed, err := copyFile(ctx, target, from, stdout)
+		if changed {
+			*updated = true
 		}
-		target := filepath.Join(arg.Wd, filepath.Base(url))
-		fmt.Fprintf(stdout, "Copy %s to %s\n", path, target)
-		utils.CopyFile(target, fileinfo.Mode(), file)
-		// TODO: copy when mod time and content is chagned
-		break
+		return err
 	}
-	return nil
+
+	return fmt.Errorf("%s is not found in FilesPath", url)
+}
+
+func copyFile(ctx context.Context, to, from string, stdout io.Writer) (bool, error) {
+
+	file, err := os.Open(from)
+	if err != nil {
+		return false, err
+	}
+	defer file.Close()
+	fileinfo, _ := file.Stat()
+
+	if _, err := os.Stat(to); err != nil {
+		fmt.Fprintf(stdout, "Copy %s to %s\n", from, to)
+		return true, utils.CopyFile(to, fileinfo.Mode(), file)
+	}
+
+	var sum1, sum2 [md5.Size]byte
+	g, ctx := xsync.WithContext(ctx)
+	g.Go(func() error {
+		data, err := ioutil.ReadFile(from)
+		if err != nil {
+			return err
+		}
+		sum1 = md5.Sum(data)
+		return nil
+	})
+
+	g.Go(func() error {
+		data, err := ioutil.ReadFile(to)
+		if err != nil {
+			return err
+		}
+		sum2 = md5.Sum(data)
+		return nil
+	})
+	if err := g.Wait(); err != nil {
+		return false, err
+	}
+
+	if !bytes.Equal(sum1[:], sum2[:]) {
+
+		fmt.Fprintf(stdout, "Sync %s to %s\n", from, to)
+		return true, utils.CopyFile(to, fileinfo.Mode(), file)
+	}
+	return false, nil
 }
