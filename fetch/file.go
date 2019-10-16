@@ -13,11 +13,17 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"runtime"
+	"strings"
 
 	"merge/fetch/utils"
 	"merge/runbook"
 	"merge/runbook/xsync"
 )
+
+type fileSync struct {
+	from, to string
+}
 
 func file(ctx context.Context, url string, updated *bool) error {
 
@@ -27,18 +33,65 @@ func file(ctx context.Context, url string, updated *bool) error {
 	url = url[7:]
 	for _, u := range arg.FilesPath {
 
-		from := filepath.Join(u, url)
-		if _, err := os.Stat(from); err != nil {
-			continue // not found
-		}
+		root := filepath.Join(u, url)
+		if _, err := os.Stat(root); err == nil { // found
 
-		target := filepath.Join(arg.Wd, url)
-		os.MkdirAll(filepath.Dir(target), 0755)
-		changed, err := copyFile(ctx, target, from, stdout)
-		if changed {
-			*updated = true
+			g, ctx := xsync.WithContext(ctx)
+			paths := make(chan fileSync)
+
+			g.Go(func() error {
+
+				defer close(paths)
+				return filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+					if err != nil {
+						return err
+					}
+
+					rel := strings.TrimPrefix(path, u)   // remove prefix dir of FilesPath
+					target := filepath.Join(arg.Wd, rel) // full target path
+
+					if info.IsDir() {
+						return os.MkdirAll(target, 0755)
+					}
+
+					if info.Mode().IsRegular() {
+
+						select {
+						case paths <- fileSync{
+							from: path,
+							to:   target,
+						}:
+						case <-ctx.Done():
+							return ctx.Err()
+						}
+						return nil
+					} else {
+						link, err := os.Readlink(path)
+						if err == nil {
+							os.Symlink(link, target)
+						}
+						return err
+					}
+				})
+			})
+
+			for i := 0; i < runtime.NumCPU(); i++ {
+				g.Go(func() error {
+					for files := range paths {
+						changed, err := copyFile(ctx, files.to, files.from, stdout)
+						if changed {
+							*updated = true
+						}
+						if err != nil {
+							return err
+						}
+					}
+					return nil
+				})
+			}
+			err := g.Wait()
+			return err
 		}
-		return err
 	}
 
 	return fmt.Errorf("%s is not found in FilesPath", url)
