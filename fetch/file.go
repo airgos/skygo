@@ -25,7 +25,7 @@ type fileSync struct {
 	from, to string
 }
 
-func file(ctx context.Context, url string, updated *bool) error {
+func file(ctx context.Context, url string, notify func(bool)) error {
 
 	arg, _ := runbook.FromContext(ctx)
 	stdout, _ := arg.Output()
@@ -78,13 +78,11 @@ func file(ctx context.Context, url string, updated *bool) error {
 			for i := 0; i < runtime.NumCPU(); i++ {
 				g.Go(func() error {
 					for files := range paths {
-						changed, err := copyFile(ctx, files.to, files.from, stdout)
-						if changed {
-							*updated = true
-						}
+						updated, err := copyFile(ctx, files.to, files.from, stdout)
 						if err != nil {
 							return err
 						}
+						notify(updated)
 					}
 					return nil
 				})

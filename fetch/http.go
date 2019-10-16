@@ -24,7 +24,9 @@ import (
 // don't unpack again if it's done
 
 // support scheme http and https. if file is archiver, unpack it
-func httpAndUnpack(ctx context.Context, dd string, url string, updated *bool) error {
+func httpAndUnpack(ctx context.Context, dd string, url string,
+	notify func(bool)) error {
+
 	arg, _ := runbook.FromContext(ctx)
 	stdout, _ := arg.Output()
 

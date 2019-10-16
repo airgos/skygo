@@ -46,18 +46,19 @@ type fetchCmd struct {
 }
 
 // Download grab url in Resource
-// only set updated when source code change is detected
-func (cmd *fetchCmd) Download(ctx context.Context, res *Resource, updated *bool) error {
+// notify tell whether source code change is detected
+func (cmd *fetchCmd) Download(ctx context.Context, res *Resource,
+	notify func(bool)) error {
 
 	switch m := cmd.fetch.(type) {
 
 	// scheme file: handler
-	case func(context.Context, string, *bool) error:
-		return m(ctx, cmd.url, updated)
+	case func(context.Context, string, func(bool)) error:
+		return m(ctx, cmd.url, notify)
 
 	// for http,https,vscGit
-	case func(context.Context, string, string, *bool) error:
-		return m(ctx, res.dd, cmd.url, updated)
+	case func(context.Context, string, string, func(bool)) error:
+		return m(ctx, res.dd, cmd.url, notify)
 
 	default:
 		return errors.New("Unknown fetch command")
@@ -182,28 +183,25 @@ func (fetch *Resource) Download(ctx context.Context,
 
 	h := res.head
 
-	updated := false
+	var once sync.Once
 	g, ctx := xsync.WithContext(ctx)
 	for e := h.Front(); e != nil; e = e.Next() {
 		e := e // https://golang.org/doc/faq#closures_and_goroutines
 		g.Go(func() error {
 
 			fetchCmd := e.Value.(*fetchCmd)
-			if err := fetchCmd.Download(ctx, fetch, &updated); err != nil {
+			if err := fetchCmd.Download(ctx, fetch, func(updated bool) {
+				if notify != nil && updated {
+					once.Do(func() { notify(ctx) })
+				}
+			}); err != nil {
 				return fmt.Errorf("failed to fetch %s. Reason: \n\t %s", fetchCmd.url, err)
 			}
 			return nil
 		})
 	}
 
-	if err := g.Wait(); err != nil {
-		return err
-	}
-
-	if updated && notify != nil {
-		notify(ctx)
-	}
-	return nil
+	return g.Wait()
 }
 
 // PushFile push scheme file:// to SrcURL
