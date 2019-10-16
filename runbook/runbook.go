@@ -192,6 +192,11 @@ func newStage(name string) *Stage {
 	return &stage
 }
 
+// Name give the name of the stage
+func (s *Stage) Name() string {
+	return s.name
+}
+
 // InsertAfter insert a new stage @name after current one
 // Return new stage
 func (s *Stage) InsertAfter(name string) *Stage {

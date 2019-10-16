@@ -17,18 +17,20 @@ import (
 
 func addEventListener(rb *runbook.Runbook) {
 
-	// before souce code is fetched, generally var S is empty.
-	// call tryToSetVarS after fetch stage to update var S
-	if stage := rb.Stage(carton.FETCH); stage != nil {
-		if stage := stage.Next(); stage != nil {
-			stage.PushInOut(tryToSetVarS, nil)
-		}
-	}
-
 	for stage := rb.Head(); stage != nil; stage = stage.Next() {
+
 		stage.PushInOut(logfileEnter, logfileExit)
-		stage.PushInOut(stageStatus, stageSetDone)
 		stage.PushReset(stageReset)
+
+		// always play stage FETCH, then FETCH has chance to detect code change
+		if stage.Name() != carton.FETCH {
+			stage.PushInOut(stageStatus, stageSetDone)
+		} else {
+			// before souce code is fetched, generally var S is empty.
+			// call tryToSetVarS upon quiting fetch stage to update var S
+			stage.PushInOut(nil, tryToSetVarS)
+		}
+
 	}
 	rb.PushInOut(cleanTask, nil)
 }
@@ -106,18 +108,16 @@ func cleanTask(task string, arg *runbook.Arg) (bool, interface{}, error) {
 	return false, nil, nil
 }
 
-func tryToSetVarS(stage string, arg *runbook.Arg) (bool, interface{}, error) {
-
+func tryToSetVarS(stage string, arg *runbook.Arg, x interface{}) error {
 	if arg.Vars["S"] != "" {
-		return false, nil, nil
+		return nil
 	}
 
 	c, _, _, _ := carton.Find(arg.Owner)
 	if dir := c.SrcDir(arg.Wd); dir == "" {
-		return false, nil,
-			fmt.Errorf("SrcDir is empty! Please try to set by SetSrcDir explicitily.")
+		return fmt.Errorf("Failed to find SrcDir automatically! Please set it explicitily by SetSrcDir.")
 	} else {
 		arg.Vars["S"] = dir
 	}
-	return false, nil, nil
+	return nil
 }
