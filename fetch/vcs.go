@@ -38,6 +38,8 @@ type vcsCmd struct {
 	tagSyncDefault []string
 	tagNewCmd      string
 
+	revCmd string
+
 	// used to indentify which kind of vcs
 	//pingCmd
 }
@@ -63,6 +65,8 @@ var vcsGit = vcsCmd{
 
 	// used to create pesudo tag if rev is not branch name or tag name
 	tagNewCmd: "tag $tag $tag",
+
+	revCmd: "rev-parse HEAD",
 }
 
 func byRepo(repo, tag string) *vcsCmd {
@@ -96,6 +100,7 @@ func (vcs *vcsCmd) run(dir, cmdline string) ([]byte, error) {
 			args[j] = strings.ReplaceAll(arg, k, v)
 		}
 	}
+
 	// fmt.Println(vcs.cmd, args)
 	cmd := exec.CommandContext(vcs.ctx, vcs.cmd, args...)
 	cmd.Dir = dir
@@ -178,7 +183,9 @@ func (vcs *vcsCmd) syncTag() error {
 }
 
 func vcsFetch(ctx context.Context, dd string, url string,
-	notify func(bool)) error {
+	notify func(bool)) (err error) {
+
+	var rev1, rev2 []byte
 
 	arg, _ := runbook.FromContext(ctx)
 	repo := url
@@ -194,9 +201,21 @@ func vcsFetch(ctx context.Context, dd string, url string,
 	if e := vcs.lookupRepo(arg.Wd); e != nil {
 		return e
 	}
-	if e := vcs.syncTag(); e != nil {
-		return e
+
+	// get revision before syncTag
+	if rev1, err = vcs.run(vcs.dir, vcs.revCmd); err != nil {
+		return err
 	}
 
+	if err = vcs.syncTag(); err != nil {
+		return err
+	}
+
+	// get revision after syncTag
+	if rev2, err = vcs.run(vcs.dir, vcs.revCmd); err != nil {
+		return err
+	}
+
+	notify(!bytes.Equal(rev1, rev2))
 	return nil
 }
