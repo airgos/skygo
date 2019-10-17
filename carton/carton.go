@@ -71,8 +71,6 @@ func NewCarton(name string, m func(c *Carton)) {
 		rb := runbook.NewRunbook()
 		fetch := rb.PushFront(FETCH)
 		fetch.AddTask(0, func(ctx context.Context) error {
-			arg, _ := runbook.FromContext(ctx)
-			os.MkdirAll(arg.Wd, 0755)
 			return c.fetch.Download(ctx,
 				// reset subsequent stages
 				func(ctx context.Context) {

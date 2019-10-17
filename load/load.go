@@ -113,8 +113,10 @@ func (l *Load) perform(ctx context.Context, c carton.Builder, target string,
 	// reset buffer
 	x.buf.Reset()
 
-	// mkdir temp
+	// mkdir temp dir
 	os.MkdirAll(x.arg.Vars["T"], 0755)
+	// mkdir WORKDIR
+	os.MkdirAll(x.arg.Wd, 0755)
 
 	if nodeps && target != "" {
 		err = c.Runbook().Play(ctx, target)
@@ -252,7 +254,7 @@ func setupArg(carton carton.Builder, arg *runbook.Arg, isNative bool) {
 	arg.Vars = map[string]string{
 		"ISNATIVE": fmt.Sprintf("%v", isNative),
 
-		"WORKDIR": WorkDir(carton, isNative),
+		"WORKDIR": arg.Wd,
 		"TOPDIR":  TOPDIR,
 		"BUILDIR": config.GetVar(config.BUILDIR),
 
