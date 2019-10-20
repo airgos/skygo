@@ -14,7 +14,9 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
+	"time"
 
 	"merge/log"
 )
@@ -168,6 +170,12 @@ func (tc *TaskCmd) Run(ctx context.Context) error {
 		r = strings.NewReader(tc.name)
 	}
 
+	timeout, _ := arg.LookupVar("TIMEOUT")
+	timeOut, _ := strconv.Atoi(timeout)
+	ctx, cancel := context.WithTimeout(ctx, time.Duration(timeOut)*time.Second)
+	// just need timeout mechanism, but it still can be cancelled bu upper ctx
+	_ = cancel
+
 	cmd := exec.CommandContext(ctx, "/bin/bash")
 	cmd.Stdout, cmd.Stderr = arg.Output()
 	cmd.Dir = arg.SrcDir(arg.Wd)
@@ -179,15 +187,42 @@ func (tc *TaskCmd) Run(ctx context.Context) error {
 	}
 
 	if routine != "" {
-
 		cmd.Stdin = io.MultiReader(r, strings.NewReader(tc.routine))
 	} else {
 		cmd.Stdin = r
-
 	}
 
-	if e := cmd.Run(); e != nil {
-		return fmt.Errorf("Runbook: %s", e)
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+
+	waitDone := make(chan struct{})
+	defer close(waitDone)
+	go func() {
+		select {
+		case <-ctx.Done():
+			cmd.Process.Kill()
+			log.Trace("Runbook: kill process at %s@%s since %v",
+				arg.Owner, tc.routine, ctx.Err())
+		case <-waitDone:
+		}
+	}()
+
+	err := cmd.Wait()
+	if e := ctx.Err(); e != nil {
+		switch e {
+		case context.DeadlineExceeded:
+			return fmt.Errorf("Runbook expire on %s@%s over %d seconds",
+				arg.Owner, tc.routine, timeOut)
+		default:
+			return fmt.Errorf("Runbook failed on %s@%s since %s",
+				arg.Owner, tc.routine, e)
+		}
+	}
+
+	if err != nil {
+		return fmt.Errorf("Runbook failed on %s@%s since %s",
+			arg.Owner, tc.routine, err)
 	}
 	return nil
 }

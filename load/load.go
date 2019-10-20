@@ -243,16 +243,20 @@ func setupArg(carton carton.Builder, arg *runbook.Arg, isNative bool) {
 	arg.VisitVars = func(fn func(key, value string)) {
 		carton.VisitVars(fn)
 	}
+
 	arg.LookupVar = func(key string) (string, bool) {
-		if value, ok := arg.Vars[key]; ok {
+		// get key from carton firstly
+		if value, ok := carton.LookupVar(key); ok {
 			return value, ok
 		}
-		return carton.LookupVar(key)
+		value, ok := arg.Vars[key]
+		return value, ok
 	}
 
 	TOPDIR := config.GetVar(config.TOPDIR)
 	arg.Vars = map[string]string{
 		"ISNATIVE": fmt.Sprintf("%v", isNative),
+		"TIMEOUT":  "1800", // unit is second, default is 30min
 
 		"WORKDIR": arg.Wd,
 		"TOPDIR":  TOPDIR,
