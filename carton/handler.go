@@ -16,7 +16,10 @@ type Modifier interface {
 	// dir will be joined with directory path of which file invokes AddFilePath
 	AddFilePath(dir string) error
 
-	// Set where source code is explicitly
+	// SetSrcDir set source directory explicitily. dir can be relative or absolute path
+	// relative path must be under WORKDIR
+	// it's useful to support absolute path for development
+	// if dir has prefix '~', it will be extended
 	SetSrcDir(dir string) error
 
 	// used to update dependency

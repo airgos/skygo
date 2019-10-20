@@ -179,6 +179,10 @@ func (c *Carton) Depends(deps ...string) []string {
 // WORKDIR depends on ARCH. one carton has different WORKDIR for different ARCH
 func (c *Carton) SrcDir(wd string) string {
 
+	if filepath.IsAbs(c.srcpath) {
+		return c.srcpath
+	}
+
 	if c.srcpath != "" {
 		d := filepath.Join(wd, c.srcpath)
 		if info, e := os.Stat(d); e != nil || !info.IsDir() {
@@ -201,10 +205,14 @@ func (c *Carton) SrcDir(wd string) string {
 	return ""
 }
 
-// SetSrcDir set SrcDir explicitily. dir msut be a relative path that's under WORKDIR
+// SetSrcDir set source directory explicitily. dir can be relative or absolute path
+// relative path must be under WORKDIR
+// it's useful to support absolute path for development
+// if dir has prefix '~', it will be extended
 func (c *Carton) SetSrcDir(dir string) error {
-	if filepath.IsAbs(dir) {
-		return ErrAbsPath
+
+	if strings.HasPrefix(dir, "~") {
+		dir = strings.Replace(dir, "~", os.Getenv("HOME"), 1)
 	}
 	c.srcpath = dir
 	return nil
