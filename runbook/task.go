@@ -16,6 +16,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"merge/log"
@@ -192,6 +193,9 @@ func (tc *TaskCmd) Run(ctx context.Context) error {
 		cmd.Stdin = r
 	}
 
+	//Child processes get the same process group id(PGID) as their parents by default
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+
 	if err := cmd.Start(); err != nil {
 		return err
 	}
@@ -201,8 +205,13 @@ func (tc *TaskCmd) Run(ctx context.Context) error {
 	go func() {
 		select {
 		case <-ctx.Done():
-			cmd.Process.Kill()
-			log.Trace("Runbook: kill process at %s@%s since %v",
+			// kill all processes in the process group by sending a KILL to
+			//-PID of the process, which is the same as -PGID. Assuming that
+			//the child process did not use setpgid(2) when spawning its
+			//own child, this should kill the child along with all of its
+			//children on any *Nix systems.
+			syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
+			log.Warning("Runbook: kill process at %s@%s since %v",
 				arg.Owner, tc.routine, ctx.Err())
 		case <-waitDone:
 		}
