@@ -13,6 +13,7 @@ import (
 )
 
 type info struct {
+	name string //top cmd name
 }
 
 func (*info) Name() string         { return "info" }

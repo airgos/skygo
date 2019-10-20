@@ -13,7 +13,8 @@ import (
 )
 
 type clean struct {
-	Force bool `flag:"force" help:"remove working path"`
+	name  string //top cmd name
+	Force bool   `flag:"force" help:"remove working path"`
 }
 
 func (*clean) Name() string      { return "clean" }
@@ -31,7 +32,7 @@ func (c *clean) Run(ctx context.Context, args ...string) error {
 		return commandLineErrorf("carton name must be supplied")
 	}
 
-	err := load.NewLoad(1).Clean(ctx, args[0], c.Force)
+	err := load.NewLoad(c.name, 1).Clean(ctx, args[0], c.Force)
 	if err == runbook.ErrUnknownTask {
 		return fmt.Errorf("carton %s has no task clean, try to add flag -force", args[0])
 	}

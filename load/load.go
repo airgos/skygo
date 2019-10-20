@@ -11,10 +11,12 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"sync"
+	"syscall"
 
 	"merge/carton"
 	"merge/config"
@@ -35,6 +37,8 @@ type Load struct {
 	// loadError is allowed to set only once
 	err  loadError
 	once sync.Once
+
+	exit func()
 }
 
 type pool struct {
@@ -62,7 +66,7 @@ func (l *loadError) Error() string {
 
 // NewLoad create load to build carton
 // num represent how many loader work. if its value is 0, it will use default value
-func NewLoad(num int) *Load {
+func NewLoad(name string, num int) *Load {
 
 	if num == 0 {
 		num = runtime.NumCPU()
@@ -83,6 +87,28 @@ func NewLoad(num int) *Load {
 		load.bufs[i] = x.buf
 		return &x
 	})
+
+	buildir := config.GetVar(config.BUILDIR)
+	lockfile := filepath.Join(buildir, name+".lockfile")
+
+	if _, err := os.Stat(lockfile); err == nil {
+		fmt.Printf("another instance %s is running", name)
+		os.Exit(0)
+	}
+	os.Create(lockfile)
+
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		<-sigs
+		if load.cancel != nil {
+			load.cancel()
+		}
+	}()
+
+	load.exit = func() {
+		os.Remove(lockfile)
+	}
 
 	return &load
 }
@@ -187,6 +213,7 @@ func (l *Load) run(ctx context.Context, name, target string, isNative bool) {
 // Run start loading
 func (l *Load) Run(ctx context.Context, name, target string, nodeps bool) error {
 
+	defer l.exit()
 	ctx, cancel := context.WithCancel(ctx)
 	l.cancel = cancel
 
@@ -217,6 +244,7 @@ func (l *Load) Run(ctx context.Context, name, target string, nodeps bool) error 
 // Clean invokes carton's method Clean
 func (l *Load) Clean(ctx context.Context, name string, force bool) error {
 
+	defer l.exit()
 	c, _, isNative, err := carton.Find(name)
 	if err != nil {
 		l.err = loadError{

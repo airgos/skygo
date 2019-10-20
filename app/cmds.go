@@ -9,12 +9,8 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"os/signal"
-	"path/filepath"
-	"syscall"
 
 	"merge/carton"
-	"merge/config"
 	"merge/log"
 )
 
@@ -29,22 +25,6 @@ type App struct {
 func New() *App {
 	app := new(App)
 	app.name = "merge"
-
-	buildir := config.GetVar(config.BUILDIR)
-	app.lockfile = filepath.Join(buildir, app.name+".lockfile")
-
-	if _, err := os.Stat(app.lockfile); err == nil {
-		fmt.Printf("another instance %s is running", app.name)
-		os.Exit(0)
-	}
-	os.Create(app.lockfile)
-
-	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
-	go func() {
-		<-sigs
-		os.Remove(app.lockfile)
-	}()
 	return app
 }
 
@@ -102,10 +82,10 @@ func (app *App) Run(ctx context.Context, args ...string) error {
 	return commandLineErrorf("Unknown command %s", name)
 }
 
-func (*App) commands() []Application {
+func (app *App) commands() []Application {
 	return []Application{
-		&info{},
-		&build{},
-		&clean{},
+		&info{name: app.name},
+		&build{name: app.name},
+		&clean{name: app.name},
 	}
 }
