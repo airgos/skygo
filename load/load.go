@@ -40,6 +40,8 @@ type Load struct {
 
 	cancel context.CancelFunc
 	exit   func()
+
+	loaded sync.Map // record cartons loaded
 }
 
 type pool struct {
@@ -297,7 +299,14 @@ func (l *Load) setupArg(carton carton.Builder, arg *runbook.Arg,
 	}
 }
 
-func setupRunbook(rb *runbook.Runbook) {
+func (l *Load) setupRunbook(c carton.Builder) {
+
+	rb := c.Runbook()
+	name := c.Provider()
+
+	if _, ok := l.loaded.Load(name); ok {
+		return // avoide configuration again
+	}
 
 	if s := rb.Stage(carton.PATCH); s != nil {
 		s.AddTask(0, func(ctx context.Context) error {
@@ -305,6 +314,7 @@ func setupRunbook(rb *runbook.Runbook) {
 		})
 	}
 	addEventListener(rb)
+	l.loaded.LoadOrStore(name, true)
 }
 
 func (l *Load) find(name string) (c carton.Builder, isVirtual bool,
@@ -322,7 +332,12 @@ func (l *Load) find(name string) (c carton.Builder, isVirtual bool,
 		return
 	}
 
-	setupRunbook(c.Runbook())
+	// don't setup Runbook on carton's link
+	t := c
+	if isVirtual {
+		t, _, _, _ = carton.Find(c.Provider())
+	}
+	l.setupRunbook(t)
 	return
 }
 
