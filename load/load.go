@@ -29,16 +29,17 @@ type Load struct {
 	works int
 	pool  *xsync.Pool
 
+	vars map[string]string //global key-value
+
 	arg  []*runbook.Arg
 	bufs []*bytes.Buffer
-
-	cancel context.CancelFunc
 
 	// loadError is allowed to set only once
 	err  loadError
 	once sync.Once
 
-	exit func()
+	cancel context.CancelFunc
+	exit   func()
 }
 
 type pool struct {
@@ -68,14 +69,32 @@ func (l *loadError) Error() string {
 // num represent how many loader work. if its value is 0, it will use default value
 func NewLoad(name string, num int) *Load {
 
+	buildir := config.GetVar(config.BUILDIR)
+	lockfile := filepath.Join(buildir, name+".lockfile")
+
+	if _, err := os.Stat(lockfile); err == nil {
+		fmt.Printf("another instance %s is running", name)
+		os.Exit(0)
+	}
+	os.Create(lockfile)
+
 	if num == 0 {
 		num = runtime.NumCPU()
 	}
+
 	load := Load{
 		arg:   make([]*runbook.Arg, num),
 		bufs:  make([]*bytes.Buffer, num),
 		works: num,
+		vars: map[string]string{
+			"TIMEOUT": "1800", // unit is second, default is 30min
+
+			"TOPDIR":     config.GetVar(config.TOPDIR),
+			"IMAGEDIR":   config.GetVar(config.IMAGEDIR),
+			"STAGINGDIR": config.GetVar(config.STAGINGDIR),
+		},
 	}
+
 	load.pool = xsync.NewPool(num, func(i int) interface{} {
 		x := pool{
 			arg: new(runbook.Arg),
@@ -88,15 +107,6 @@ func NewLoad(name string, num int) *Load {
 		return &x
 	})
 
-	buildir := config.GetVar(config.BUILDIR)
-	lockfile := filepath.Join(buildir, name+".lockfile")
-
-	if _, err := os.Stat(lockfile); err == nil {
-		fmt.Printf("another instance %s is running", name)
-		os.Exit(0)
-	}
-	os.Create(lockfile)
-
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
@@ -105,11 +115,14 @@ func NewLoad(name string, num int) *Load {
 			load.cancel()
 		}
 	}()
-
 	load.exit = func() {
 		os.Remove(lockfile)
 	}
 
+	os.MkdirAll(config.GetVar(config.BUILDIR), 0755)
+	os.MkdirAll(config.GetVar(config.DLDIR), 0755)
+	os.MkdirAll(config.GetVar(config.IMAGEDIR), 0755)
+	os.MkdirAll(config.GetVar(config.STAGINGDIR), 0755)
 	return &load
 }
 
@@ -130,7 +143,7 @@ func (l *Load) perform(ctx context.Context, c carton.Builder, target string,
 	x := l.pool.Get(ctx).(*pool)
 	defer l.pool.Put(x)
 
-	setupArg(c, x.arg, isNative)
+	l.setupArg(c, x.arg, isNative)
 	if nodeps {
 		x.arg.SetUnderOutput(os.Stdout, os.Stderr)
 	}
@@ -139,10 +152,9 @@ func (l *Load) perform(ctx context.Context, c carton.Builder, target string,
 	// reset buffer
 	x.buf.Reset()
 
-	// mkdir temp dir
-	os.MkdirAll(x.arg.Vars["T"], 0755)
-	// mkdir WORKDIR
-	os.MkdirAll(x.arg.Wd, 0755)
+	os.MkdirAll(x.arg.Wd, 0755)        //WORKDIR
+	os.MkdirAll(x.arg.Vars["T"], 0755) //temp dir
+	os.MkdirAll(x.arg.Vars["D"], 0755)
 
 	if nodeps && target != "" {
 		err = c.Runbook().Play(ctx, target)
@@ -217,9 +229,6 @@ func (l *Load) Run(ctx context.Context, name, target string, nodeps bool) error 
 	ctx, cancel := context.WithCancel(ctx)
 	l.cancel = cancel
 
-	os.MkdirAll(config.GetVar(config.BUILDIR), 0755)
-	os.MkdirAll(config.GetVar(config.DLDIR), 0755)
-
 	if nodeps {
 
 		b, _, isNative, err := carton.Find(name)
@@ -262,7 +271,8 @@ func (l *Load) Clean(ctx context.Context, name string, force bool) error {
 	return l.perform(ctx, c, "clean", true, isNative)
 }
 
-func setupArg(carton carton.Builder, arg *runbook.Arg, isNative bool) {
+func (l *Load) setupArg(carton carton.Builder, arg *runbook.Arg,
+	isNative bool) {
 
 	arg.Owner = carton.Provider()
 	arg.FilesPath = carton.FilesPath()
@@ -281,29 +291,24 @@ func setupArg(carton carton.Builder, arg *runbook.Arg, isNative bool) {
 		return value, ok
 	}
 
-	TOPDIR := config.GetVar(config.TOPDIR)
 	arg.Vars = map[string]string{
 		"ISNATIVE": fmt.Sprintf("%v", isNative),
-		"TIMEOUT":  "1800", // unit is second, default is 30min
-
-		"WORKDIR": arg.Wd,
-		"TOPDIR":  TOPDIR,
-		"BUILDIR": config.GetVar(config.BUILDIR),
+		"WORKDIR":  arg.Wd,
 
 		"PN": carton.Provider(),
 		"S":  carton.SrcDir(arg.Wd),
 		"T":  filepath.Join(arg.Wd, "temp"),
 		"D":  filepath.Join(arg.Wd, "image"),
 
-		"IMAGEDIR": filepath.Join(TOPDIR, config.GetVar(config.IMAGEDIR),
-			config.GetVar(config.MACHINE)),
-		"STAGINGDIR": filepath.Join(TOPDIR, config.GetVar(config.STAGINGDIR)),
-
 		"TARGETARCH":   getTargetArch(carton, isNative),
 		"TARGETOS":     getTargetOS(carton, isNative),
 		"TARGETVENDOR": getTargetVendor(carton, isNative),
 	}
 
+	// export global vars hold by Load
+	for k, v := range l.vars {
+		arg.Vars[k] = v
+	}
 }
 
 func SetupRunbook(rb *runbook.Runbook) {
