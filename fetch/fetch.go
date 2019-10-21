@@ -22,8 +22,6 @@ import (
 
 // Resource represent state of fetch
 type Resource struct {
-	dd string // download path.absolute directory path
-
 	resource map[string]SrcURL
 
 	// preferred version
@@ -58,7 +56,9 @@ func (cmd *fetchCmd) Download(ctx context.Context, res *Resource,
 
 	// for http,https,vscGit
 	case func(context.Context, string, string, func(bool)) error:
-		return m(ctx, res.dd, cmd.url, notify)
+		arg, _ := runbook.FromContext(ctx)
+		dir, _ := arg.LookupVar("DLDIR")
+		return m(ctx, dir, cmd.url, notify)
 
 	default:
 		return errors.New("Unknown fetch command")
@@ -66,11 +66,9 @@ func (cmd *fetchCmd) Download(ctx context.Context, res *Resource,
 }
 
 // NewFetch create fetch state
-func NewFetch(dd string) *Resource {
+func NewFetch() *Resource {
 
 	fetch := new(Resource)
-
-	fetch.dd = dd
 	fetch.resource = make(map[string]SrcURL)
 	return fetch
 }

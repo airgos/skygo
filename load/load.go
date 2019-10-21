@@ -91,6 +91,7 @@ func NewLoad(name string, num int) *Load {
 		vars: map[string]string{
 			"TIMEOUT": "1800", // unit is second, default is 30min
 
+			"DLDIR":      config.GetVar(config.DLDIR),
 			"TOPDIR":     config.GetVar(config.TOPDIR),
 			"IMAGEDIR":   config.GetVar(config.IMAGEDIR),
 			"STAGINGDIR": config.GetVar(config.STAGINGDIR),

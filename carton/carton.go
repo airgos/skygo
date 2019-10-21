@@ -14,7 +14,6 @@ import (
 	"runtime"
 	"strings"
 
-	"merge/config"
 	"merge/fetch"
 	"merge/log"
 	"merge/runbook"
@@ -96,7 +95,7 @@ func (c *Carton) Init(file string, arg Modifier, modify func(arg Modifier)) {
 	add(c, file, func() {
 		c.cartons = []string{}
 		c.vars = make(map[string]string)
-		c.fetch = fetch.NewFetch(config.GetVar("DLDIR"))
+		c.fetch = fetch.NewFetch()
 
 		c.file = []string{}
 		c.filespath = []string{}

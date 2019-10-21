@@ -323,7 +323,7 @@ type Arg struct {
 	// golang task should call it to get value of Variable
 	LookupVar func(key string) (string, bool)
 
-	// LookupVar implementation should check Vars firstly, if it does not exist, try other
+	// LookupVar implementation check Vars lastly if not found at other place
 	Vars map[string]string
 
 	// underline IO, call method Output() to get IO
