@@ -47,6 +47,7 @@ type Stage struct {
 
 	m        sync.Mutex
 	executed uint32 // executed ?
+	disabled bool
 
 	// inherits event listeners
 	listeners
@@ -197,6 +198,14 @@ func (s *Stage) Name() string {
 	return s.name
 }
 
+// Disable makrs Play is not allowed to be run
+func (s *Stage) Disable() {
+
+	s.m.Lock()
+	s.disabled = true
+	s.m.Unlock()
+}
+
 // InsertAfter insert a new stage @name after current one
 // Return new stage
 func (s *Stage) InsertAfter(name string) *Stage {
@@ -262,6 +271,9 @@ func (s *Stage) Reset(ctx context.Context) {
 
 // Play perform tasks in the stage
 func (s *Stage) Play(ctx context.Context) error {
+	if s.disabled {
+		return nil
+	}
 
 	if atomic.LoadUint32(&s.executed) == 1 {
 		return nil
