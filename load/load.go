@@ -178,20 +178,15 @@ func (l *Load) perform(ctx context.Context, c carton.Builder, target string,
 func (l *Load) run(ctx context.Context, name, target string, isNative bool) {
 	var wg sync.WaitGroup
 
-	b, _, native, err := carton.Find(name)
+	b, _, native, err := l.find(name)
 	if err != nil {
-		l.err = loadError{
-			carton: name,
-			err:    err,
-		}
 		return
 	}
+
 	// inherits isNative
 	if native {
 		isNative = true
 	}
-
-	SetupRunbook(b.Runbook())
 
 	scan := func(deps []string) {
 		wg.Add(len(deps))
@@ -231,15 +226,10 @@ func (l *Load) Run(ctx context.Context, name, target string, nodeps bool) error 
 
 	if nodeps {
 
-		b, _, isNative, err := carton.Find(name)
+		b, _, isNative, err := l.find(name)
 		if err != nil {
-			l.err = loadError{
-				carton: name,
-				err:    err,
-			}
-			return &l.err
+			return err
 		}
-		SetupRunbook(b.Runbook())
 		return l.perform(ctx, b, target, true, isNative)
 	}
 
@@ -254,13 +244,9 @@ func (l *Load) Run(ctx context.Context, name, target string, nodeps bool) error 
 func (l *Load) Clean(ctx context.Context, name string, force bool) error {
 
 	defer l.exit()
-	c, _, isNative, err := carton.Find(name)
+	c, _, isNative, err := l.find(name)
 	if err != nil {
-		l.err = loadError{
-			carton: name,
-			err:    err,
-		}
-		return &l.err
+		return err
 	}
 
 	if force {
@@ -311,7 +297,7 @@ func (l *Load) setupArg(carton carton.Builder, arg *runbook.Arg,
 	}
 }
 
-func SetupRunbook(rb *runbook.Runbook) {
+func setupRunbook(rb *runbook.Runbook) {
 
 	if s := rb.Stage(carton.PATCH); s != nil {
 		s.AddTask(0, func(ctx context.Context) error {
@@ -319,4 +305,23 @@ func SetupRunbook(rb *runbook.Runbook) {
 		})
 	}
 	addEventListener(rb)
+}
+
+func (l *Load) find(name string) (c carton.Builder, isVirtual bool,
+	isNative bool, err error) {
+
+	c, isVirtual, isNative, err = carton.Find(name)
+	if err != nil {
+		l.once.Do(func() {
+			l.err = loadError{
+				carton: name,
+				err:    err,
+			}
+			err = &l.err
+		})
+		return
+	}
+
+	setupRunbook(c.Runbook())
+	return
 }
