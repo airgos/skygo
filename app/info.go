@@ -8,6 +8,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+
 	"merge/carton"
 	"merge/load"
 )
@@ -21,21 +22,19 @@ func (*info) UsageLine() string    { return "<carton name>" }
 func (*info) Summary() string      { return "show information of carton" }
 func (*info) Help(f *flag.FlagSet) {}
 
-func (*info) Run(ctx context.Context, args ...string) error {
+func (i *info) Run(ctx context.Context, args ...string) error {
 	if len(args) == 0 {
 		return commandLineErrorf("carton name must be supplied")
 	}
 
-	c, virtual, isNative, e := carton.Find(args[0])
-	if e != nil {
-		return fmt.Errorf("carton %s is %v", args[0], e)
+	c, virtual, isNative, err := load.NewLoad(i.name, 1).Find(args[0])
+	if err != nil {
+		return err
 	}
 
 	if virtual {
 		fmt.Printf("%s --> %s\n\n", args[0], c.Provider())
 	}
-	load.SetupRunbook(c.Runbook())
-
 	show(c, isNative)
 
 	return nil

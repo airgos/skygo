@@ -325,3 +325,9 @@ func (l *Load) find(name string) (c carton.Builder, isVirtual bool,
 	setupRunbook(c.Runbook())
 	return
 }
+
+func (l *Load) Find(name string) (c carton.Builder, isVirtual bool,
+	isNative bool, err error) {
+	l.exit()
+	return l.find(name)
+}
