@@ -23,7 +23,7 @@ type link struct {
 func (l *link) Provider() string                    { return l.h.Provider() }
 func (l *link) Resource() *fetch.Resource           { return l.h.Resource() }
 func (l *link) From(file ...string) []string        { return l.h.From(file...) }
-func (l *link) SrcDir(wd string) string            { return l.h.SrcDir(wd) }
+func (l *link) SrcDir(wd string) string             { return l.h.SrcDir(wd) }
 func (l *link) FilesPath() []string                 { return l.h.FilesPath() }
 func (l *link) BuildDepends(dep ...string) []string { return l.h.BuildDepends() }
 func (l *link) Depends(dep ...string) []string      { return l.h.Depends() }
@@ -41,7 +41,7 @@ func (l *link) LookupVar(key string) (string, bool) {
 	if key == "CN" {
 		return l.alias, true
 	}
-	return l.LookupVar(key)
+	return l.h.LookupVar(key)
 }
 
 // VisitVars visit each variable
