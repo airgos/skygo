@@ -202,20 +202,44 @@ func (fetch *Resource) Download(ctx context.Context,
 	return g.Wait()
 }
 
-// PushFile push scheme file:// to SrcURL
+// Push push source URL srcurl to SrcURL
 // srcurl can hold multiple URL with delimeter space
-func (res *SrcURL) PushFile(srcurl string) *SrcURL {
+// Push try to detect scheme by order:
+//  file://            find locally under FilesPath
+//  vcs, pls refer to PushVcs
+//  http:// https://   grab from network
+func (src *SrcURL) Push(srcurl string) *SrcURL {
 
 	url := strings.Fields(srcurl)
 	for _, u := range url {
-
-		url := fetchCmd{
-			fetch: file,
-			url:   u,
+		if strings.HasPrefix(u, "file://") {
+			src.pushFile(u)
+			continue
 		}
-		res.head.PushBack(&url)
+
+		if bySuffix(u) != nil {
+			src.PushVcs(u)
+			continue
+		}
+
+		if strings.HasPrefix(u, "http://") || strings.HasPrefix(u, "https://") {
+			src.pushHTTP(u)
+			continue
+		}
+		panic(fmt.Sprintf("Unknown source URL: %s", u))
 	}
-	return res
+	return src
+}
+
+// Pushfile push one scheme file:// to SrcURL
+func (src *SrcURL) pushFile(srcurl string) *SrcURL {
+
+	url := fetchCmd{
+		fetch: file,
+		url:   srcurl,
+	}
+	src.head.PushBack(&url)
+	return src
 }
 
 // PushVcs push one vcs repository to SrcURL
@@ -227,36 +251,31 @@ func (res *SrcURL) PushFile(srcurl string) *SrcURL {
 //     https://github.com:foo/bar.git
 //     https://github.com:foo/bar.git@v1.1
 //     https://github.com:foo/bar.git@c198403
-func (res *SrcURL) PushVcs(srcurl string) *SrcURL {
+// Mostly, Push can push vcs repository URL, reserved this API for fallback
+func (src *SrcURL) PushVcs(srcurl string) *SrcURL {
 
 	if strings.Contains(srcurl, " ") {
-		// TODO: who ?
-		panic("it contains multiple repo in one url")
+		panic(fmt.Sprintf("repository %s has SPACE", srcurl))
 	}
 
 	url := fetchCmd{
 		fetch: vcsFetch,
 		url:   srcurl,
 	}
-	res.head.PushBack(&url)
-	return res
+	src.head.PushBack(&url)
+	return src
 }
 
-// PushHTTP push Http or Https URL to SrcURL
+// pushHTTP push Http or Https URL to SrcURL
 // srcurl's scheme must be https:// or http://, and sha256 checksum must be
 // append at the end with delimeter #
 // e.g.  http://x.y.z/foo.tar.bz2#sha256
-// srcurl can hold multiple URL with delimeter space
-func (res *SrcURL) PushHTTP(srcurl string) *SrcURL {
+func (src *SrcURL) pushHTTP(srcurl string) *SrcURL {
 
-	url := strings.Fields(srcurl)
-	for _, u := range url {
-
-		url := fetchCmd{
-			fetch: httpAndUnpack,
-			url:   u,
-		}
-		res.head.PushBack(&url)
+	url := fetchCmd{
+		fetch: httpAndUnpack,
+		url:   srcurl,
 	}
-	return res
+	src.head.PushBack(&url)
+	return src
 }

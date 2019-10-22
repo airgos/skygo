@@ -27,8 +27,11 @@ type vcsCmd struct {
 	env map[string]string
 
 	index string
-	repo  string
-	tag   string
+	// used to indentify which kind of vcs
+	pattern string
+
+	repo string
+	tag  string
 
 	createCmd   []string
 	downloadCmd []string
@@ -40,8 +43,8 @@ type vcsCmd struct {
 
 	revCmd string
 
-	// used to indentify which kind of vcs
-	//pingCmd
+	//TODO:
+	//add field pingCmd to check kind on the fly
 }
 
 type tagCmd struct {
@@ -51,8 +54,12 @@ type tagCmd struct {
 
 var vcsGit = vcsCmd{
 
-	cmd:       "git",
-	index:     ".git",
+	cmd:   "git",
+	index: ".git",
+
+	// example matched url a.b.c/x.git, a.b.c/x.git@a234
+	pattern: `((?:\.git@.+|\.git))$`,
+
 	createCmd: []string{"clone $repo"},
 
 	// tag is either tag name or branch name
@@ -69,11 +76,11 @@ var vcsGit = vcsCmd{
 	revCmd: "rev-parse HEAD",
 }
 
+var vcsList = []*vcsCmd{&vcsGit}
+
 func byRepo(repo, tag string) *vcsCmd {
 
 	// TODO: support another vcs
-	// match kind of vcs based on postfix, like .git
-	// match kind of vcs based on domain, e.g. match github.com to git
 	// invoke method ping to detect kind of vcs. method ping relies on pingCmd
 	vcs := &vcsGit
 
@@ -217,5 +224,16 @@ func vcsFetch(ctx context.Context, dd string, url string,
 	}
 
 	notify(!bytes.Equal(rev1, rev2))
+	return nil
+}
+
+func bySuffix(url string) *vcsCmd {
+
+	for _, vcs := range vcsList {
+		re := regexp.MustCompile(vcs.pattern)
+		if re.MatchString(url) {
+			return vcs
+		}
+	}
 	return nil
 }
