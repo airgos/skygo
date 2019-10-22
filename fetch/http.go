@@ -72,9 +72,13 @@ func download(ctx context.Context, url, checksum, fpath string) error {
 	length, _ := strconv.Atoi(l)
 	// don't fetch in parallel if file size is less then 0.5M=0.5*1024*1024
 	if a != "" && length > 524288 {
-		fetchInParallel(ctx, fpath, url, length)
+		if err := fetchInParallel(ctx, fpath, url, length); err != nil {
+			return err
+		}
 	} else {
-		return fetchSlice(ctx, 0, 0, url, fpath)
+		if err := fetchSlice(ctx, 0, 0, url, fpath); err != nil {
+			return err
+		}
 	}
 
 	if ok, sum := utils.Sha256Matched(checksum, fpath); !ok {
