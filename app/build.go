@@ -13,10 +13,10 @@ import (
 )
 
 type build struct {
-	name   string //top cmd name
-	NoDeps bool   `flag:"nodeps" help:"don't check dependency"`
-	Target string `flag:"play" help:"one indenpent task or stage name"`
-	// TODO: -HEAD, -interactive
+	name    string //top cmd name
+	NoDeps  bool   `flag:"nodeps" help:"don't check dependency"`
+	Target  string `flag:"play" help:"one indenpent task or stage name"`
+	Loaders int    `flag:"loaders" help:"set the number of jobs to build cartons"`
 }
 
 func (*build) Name() string      { return "carton" }
@@ -34,6 +34,6 @@ func (b *build) Run(ctx context.Context, args ...string) error {
 		return commandLineErrorf("carton name must be supplied")
 	}
 
-	return load.NewLoad(b.name, 0).Run(ctx, args[0], b.Target, b.NoDeps)
+	return load.NewLoad(b.name, b.Loaders).Run(ctx, args[0], b.Target, b.NoDeps)
 
 }

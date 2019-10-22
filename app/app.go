@@ -101,6 +101,8 @@ func addflags(s *flag.FlagSet, value reflect.Value) {
 				s.StringVar(v, flagName, *v, help)
 			case *bool:
 				s.BoolVar(v, flagName, *v, help)
+			case *int:
+				s.IntVar(v, flagName, *v, help)
 			default:
 				log.Fatalf("Cannot understand flag of type %T", v)
 			}
