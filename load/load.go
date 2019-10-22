@@ -26,8 +26,8 @@ import (
 
 // Load represent state of load
 type Load struct {
-	works int
-	pool  *xsync.Pool
+	loaders int
+	pool    *xsync.Pool
 
 	vars map[string]string //global key-value
 
@@ -68,8 +68,8 @@ func (l *loadError) Error() string {
 }
 
 // NewLoad create load to build carton
-// num represent how many loader work. if its value is 0, it will use default value
-func NewLoad(name string, num int) *Load {
+// loaders represent how many loader work. if its value is 0, it will use default value
+func NewLoad(name string, loaders int) *Load {
 
 	buildir := config.GetVar(config.BUILDIR)
 	lockfile := filepath.Join(buildir, name+".lockfile")
@@ -80,14 +80,14 @@ func NewLoad(name string, num int) *Load {
 	}
 	os.Create(lockfile)
 
-	if num == 0 {
-		num = runtime.NumCPU()
+	if loaders == 0 {
+		loaders = 2 * runtime.NumCPU()
 	}
 
 	load := Load{
-		arg:   make([]*runbook.Arg, num),
-		bufs:  make([]*bytes.Buffer, num),
-		works: num,
+		arg:     make([]*runbook.Arg, loaders),
+		bufs:    make([]*bytes.Buffer, loaders),
+		loaders: loaders,
 		vars: map[string]string{
 			"TIMEOUT": "1800", // unit is second, default is 30min
 
@@ -98,7 +98,7 @@ func NewLoad(name string, num int) *Load {
 		},
 	}
 
-	load.pool = xsync.NewPool(num, func(i int) interface{} {
+	load.pool = xsync.NewPool(loaders, func(i int) interface{} {
 		x := pool{
 			arg: new(runbook.Arg),
 			buf: new(bytes.Buffer),
@@ -131,7 +131,7 @@ func NewLoad(name string, num int) *Load {
 
 // SetOutput assign stdout & stderr for one load
 func (l *Load) SetOutput(index int, stdout, stderr io.Writer) *Load {
-	if index >= l.works {
+	if index >= l.loaders {
 		return nil
 	}
 
