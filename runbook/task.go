@@ -10,14 +10,10 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"sort"
-	"strconv"
 	"strings"
-	"syscall"
-	"time"
 
 	"merge/log"
 )
@@ -171,67 +167,12 @@ func (tc *TaskCmd) Run(ctx context.Context) error {
 		r = strings.NewReader(tc.name)
 	}
 
-	timeout, _ := arg.LookupVar("TIMEOUT")
-	timeOut, _ := strconv.Atoi(timeout)
-	ctx, cancel := context.WithTimeout(ctx, time.Duration(timeOut)*time.Second)
-	// just need timeout mechanism, but it still can be cancelled bu upper ctx
-	_ = cancel
-
-	cmd := exec.CommandContext(ctx, "/bin/bash")
-	cmd.Stdout, cmd.Stderr = arg.Output()
-	cmd.Dir = arg.SrcDir(arg.Wd)
-	arg.VisitVars(func(k, v string) {
-		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", k, v))
-	})
-	for k, v := range arg.Vars {
-		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", k, v))
-	}
-
+	command := NewCommand(ctx, "/bin/bash")
 	if routine != "" {
-		cmd.Stdin = io.MultiReader(r, strings.NewReader(tc.routine))
+		command.Cmd.Stdin = io.MultiReader(r, strings.NewReader(tc.routine))
 	} else {
-		cmd.Stdin = r
+		command.Cmd.Stdin = r
 	}
 
-	//Child processes get the same process group id(PGID) as their parents by default
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
-
-	if err := cmd.Start(); err != nil {
-		return err
-	}
-
-	waitDone := make(chan struct{})
-	defer close(waitDone)
-	go func() {
-		select {
-		case <-ctx.Done():
-			// kill all processes in the process group by sending a KILL to
-			//-PID of the process, which is the same as -PGID. Assuming that
-			//the child process did not use setpgid(2) when spawning its
-			//own child, this should kill the child along with all of its
-			//children on any *Nix systems.
-			syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
-			log.Warning("Runbook: kill process at %s@%s since %v",
-				arg.Owner, tc.routine, ctx.Err())
-		case <-waitDone:
-		}
-	}()
-
-	err := cmd.Wait()
-	if e := ctx.Err(); e != nil {
-		switch e {
-		case context.DeadlineExceeded:
-			return fmt.Errorf("Runbook expire on %s@%s over %d seconds",
-				arg.Owner, tc.routine, timeOut)
-		default:
-			return fmt.Errorf("Runbook failed on %s@%s since %s",
-				arg.Owner, tc.routine, e)
-		}
-	}
-
-	if err != nil {
-		return fmt.Errorf("Runbook failed on %s@%s since %s",
-			arg.Owner, tc.routine, err)
-	}
-	return nil
+	return command.Run(ctx, tc.routine)
 }
