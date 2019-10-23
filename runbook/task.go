@@ -174,5 +174,5 @@ func (tc *TaskCmd) Run(ctx context.Context) error {
 		command.Cmd.Stdin = r
 	}
 
-	return command.Run(ctx, tc.routine)
+	return command.Run(tc.routine)
 }

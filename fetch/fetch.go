@@ -178,6 +178,7 @@ func (fetch *Resource) Download(ctx context.Context,
 		log.Warning("%s don't hold any source URL", arg.Owner)
 		return nil
 	}
+	log.Trace("Start downloading source URLs owned by %s", arg.Owner)
 
 	h := res.head
 

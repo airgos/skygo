@@ -8,7 +8,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -58,19 +57,13 @@ func patch(ctx context.Context) error {
 			if strings.HasSuffix(fpath, ".diff") || strings.HasSuffix(fpath, ".patch") {
 
 				log.Trace("To apply patch %s, fpath")
+				command := runbook.NewCommand(ctx, "/bin/bash", "-c", patchcmd)
 
 				patch := filepath.Join(arg.Wd, fpath)
-
-				cmd := exec.CommandContext(ctx, "/bin/bash", "-c", patchcmd)
-				cmd.Dir = arg.SrcDir(arg.Wd)
-				cmd.Stdout, cmd.Stderr = arg.Output()
-
-				cmd.Env = append(cmd.Env, fmt.Sprintf("PATCHFILE=%s\n", patch))
-
-				if e := cmd.Run(); e != nil {
-					return fmt.Errorf("patch: %s", e)
+				command.Cmd.Env = append(command.Cmd.Env, fmt.Sprintf("PATCHFILE=%s\n", patch))
+				if e := command.Run("patch"); e != nil {
+					return e
 				}
-
 			}
 		}
 	}

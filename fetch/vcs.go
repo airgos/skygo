@@ -7,10 +7,8 @@ package fetch
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -109,17 +107,17 @@ func (vcs *vcsCmd) run(dir, cmdline string) ([]byte, error) {
 	}
 
 	// fmt.Println(vcs.cmd, args)
-	cmd := exec.CommandContext(vcs.ctx, vcs.cmd, args...)
-	cmd.Dir = dir
+	command := runbook.NewCommand(vcs.ctx, vcs.cmd, args...)
+	command.Cmd.Dir = dir
 
 	arg, _ := runbook.FromContext(vcs.ctx)
 	stdout, stderr := arg.Output()
-	cmd.Stdout, cmd.Stderr =
+	command.Cmd.Stdout, command.Cmd.Stderr =
 		io.MultiWriter(stdout, &buf),
 		io.MultiWriter(stderr, &buf)
 
-	if e := cmd.Run(); e != nil {
-		return nil, fmt.Errorf("Failed to run %s %s", vcs.cmd, cmdline)
+	if e := command.Run("fetch"); e != nil {
+		return nil, e
 	}
 	return buf.Bytes(), nil
 }
