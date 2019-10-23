@@ -8,8 +8,10 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"os"
 
 	"merge/load"
+	"merge/log"
 )
 
 type build struct {
@@ -33,7 +35,19 @@ func (b *build) Run(ctx context.Context, args ...string) error {
 	if len(args) == 0 {
 		return commandLineErrorf("carton name must be supplied")
 	}
+	panes := tmuxPanes(ctx)
+	if num := len(panes); num > 0 {
+		b.Loaders = num
+	}
 
-	return load.NewLoad(b.name, b.Loaders).Run(ctx, args[0], b.Target, b.NoDeps)
-
+	log.Trace("MaxLoaders is set to %d\n", b.Loaders)
+	l := load.NewLoad(b.name, b.Loaders)
+	for i, pane := range panes {
+		if file, err := os.OpenFile(pane, os.O_RDWR, 0766); err == nil {
+			l.SetOutput(i, file, file)
+		} else {
+			log.Warning("Failed to open tmux pane %s. Error: %s\n", pane, err)
+		}
+	}
+	return l.Run(ctx, args[0], b.Target, b.NoDeps)
 }
