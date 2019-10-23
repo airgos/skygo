@@ -150,6 +150,8 @@ func (rb *Runbook) RunTask(ctx context.Context, name string) error {
 // After invoking Play, abort if current stage is @name
 func (rb *Runbook) Range(ctx context.Context, name string) error {
 
+	arg, _ := FromContext(ctx)
+	log.Trace("Range stages held by %s", arg.Owner)
 	for stage := rb.Head(); stage != nil; stage = stage.Next() {
 		if stage.tasks.Len() > 0 {
 
