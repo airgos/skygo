@@ -20,6 +20,7 @@ import (
 
 	"merge/carton"
 	"merge/config"
+	"merge/log"
 	"merge/runbook"
 	"merge/runbook/xsync"
 )
@@ -113,8 +114,9 @@ func NewLoad(name string, loaders int) *Load {
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
-		<-sigs
+		sig := <-sigs
 		if load.cancel != nil {
+			log.Trace("loader: cancel context by signal %s", sig)
 			load.cancel()
 		}
 	}()
@@ -143,8 +145,12 @@ func (l *Load) SetOutput(index int, stdout, stderr io.Writer) *Load {
 func (l *Load) perform(ctx context.Context, c carton.Builder, target string,
 	nodeps bool, isNative bool) (err error) {
 
-	x := l.pool.Get(ctx).(*pool)
-	defer l.pool.Put(x)
+	y, err := l.pool.Get(ctx)
+	if err != nil {
+		return err
+	}
+	defer l.pool.Put(y)
+	x := y.(*pool)
 
 	l.setupArg(c, x.arg, isNative)
 	if nodeps {
@@ -247,6 +253,9 @@ func (l *Load) Run(ctx context.Context, name, target string, nodeps bool) error 
 func (l *Load) Clean(ctx context.Context, name string, force bool) error {
 
 	defer l.exit()
+	ctx, cancel := context.WithCancel(ctx)
+	l.cancel = cancel
+
 	c, _, isNative, err := l.find(name)
 	if err != nil {
 		return err
