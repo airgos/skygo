@@ -135,11 +135,22 @@ func (vcs *vcsCmd) lookupRepo(wd string) error {
 	}
 
 	vcs.dir = filepath.Join(wd, filepath.Base(path))
-	if _, err := os.Stat(filepath.Join(vcs.dir, vcs.index)); err != nil && os.IsNotExist(err) {
-		dir := filepath.Dir(vcs.dir)
+	index := filepath.Join(vcs.dir, vcs.index)
+	dir := filepath.Dir(vcs.dir)
+	if _, err := os.Stat(index); err != nil && os.IsNotExist(err) {
 		for _, cmd := range vcs.createCmd {
 			if _, e := vcs.run(dir, cmd); e != nil {
 				return e
+			}
+		}
+	} else {
+		// index is invalid, to create repo again
+		if _, err = vcs.run(vcs.dir, vcs.revCmd); err != nil {
+			os.RemoveAll(vcs.dir)
+			for _, cmd := range vcs.createCmd {
+				if _, e := vcs.run(dir, cmd); e != nil {
+					return e
+				}
 			}
 		}
 	}
