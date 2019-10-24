@@ -8,7 +8,6 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"os"
 
 	"merge/log"
 )
@@ -16,7 +15,6 @@ import (
 // App implement interface Application
 type App struct {
 	name     string
-	lockfile string
 	LogLevel string `flag:"loglevel" help:"Log Level: trace, info, warning(default), error"`
 }
 
@@ -26,9 +24,6 @@ func New() *App {
 	app.name = "merge"
 	return app
 }
-
-// Clean cleanup App
-func (app *App) Clean() { os.Remove(app.lockfile) }
 
 // Name implement Application.Name
 func (app *App) Name() string { return app.name }
