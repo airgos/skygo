@@ -8,16 +8,13 @@ import (
 	"context"
 	"fmt"
 	"os/exec"
-	"strconv"
 	"syscall"
-	"time"
 
 	"merge/log"
 )
 
 type Command struct {
-	Cmd     *exec.Cmd
-	timeout string
+	Cmd *exec.Cmd
 
 	ctxErr error
 	ctx    context.Context
@@ -27,11 +24,6 @@ type Command struct {
 func NewCommand(ctx context.Context, name string, args ...string) *Command {
 
 	arg, _ := FromContext(ctx)
-	timeout, _ := arg.LookupVar("TIMEOUT")
-	timeOut, _ := strconv.Atoi(timeout)
-	ctx, cancel := context.WithTimeout(ctx, time.Duration(timeOut)*time.Second)
-	// just need timeout mechanism, but it still can be cancelled bu upper ctx
-	_ = cancel
 
 	cmd := exec.CommandContext(ctx, name, args...)
 	cmd.Stdout, cmd.Stderr = arg.Output()
@@ -43,9 +35,8 @@ func NewCommand(ctx context.Context, name string, args ...string) *Command {
 		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", k, v))
 	}
 	return &Command{
-		timeout: timeout,
-		Cmd:     cmd,
-		ctx:     ctx,
+		Cmd: cmd,
+		ctx: ctx,
 	}
 }
 
@@ -83,8 +74,9 @@ func (c *Command) Run(stage string) error {
 	if c.ctxErr != nil {
 		switch c.ctxErr {
 		case context.DeadlineExceeded:
+			timeout, _ := arg.LookupVar("TIMEOUT")
 			return fmt.Errorf("Runbook expire on %s@%s over %s seconds",
-				arg.Owner, stage, c.timeout)
+				arg.Owner, stage, timeout)
 		default:
 			return fmt.Errorf("Runbook failed on %s@%s since %s",
 				arg.Owner, stage, c.ctxErr)

@@ -14,9 +14,11 @@ import (
 	"os/signal"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 	"syscall"
+	"time"
 
 	"merge/carton"
 	"merge/config"
@@ -155,7 +157,7 @@ func (l *Load) SetOutput(index int, stdout, stderr io.Writer) *Load {
 func (l *Load) perform(ctx context.Context, c carton.Builder, target string,
 	nodeps bool, isNative bool) (err error) {
 
-	y, err := l.pool.Get(ctx)
+	y, err := l.pool.Get(l.ctx)
 	if err != nil {
 		return err
 	}
@@ -166,6 +168,12 @@ func (l *Load) perform(ctx context.Context, c carton.Builder, target string,
 	if nodeps {
 		x.arg.SetUnderOutput(os.Stdout, os.Stderr)
 	}
+
+	timeout, _ := x.arg.LookupVar("TIMEOUT")
+	timeOut, _ := strconv.Atoi(timeout)
+	ctx, cancel := context.WithTimeout(ctx, time.Duration(timeOut)*time.Second)
+	defer cancel()
+
 	ctx = runbook.NewContext(ctx, x.arg)
 
 	// reset buffer
