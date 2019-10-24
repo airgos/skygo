@@ -41,7 +41,7 @@ func (b *build) Run(ctx context.Context, args ...string) error {
 	}
 
 	log.Trace("MaxLoaders is set to %d\n", b.Loaders)
-	l := load.NewLoad(b.name, b.Loaders)
+	l := load.NewLoad(ctx, b.name, b.Loaders)
 	for i, pane := range panes {
 		if file, err := os.OpenFile(pane, os.O_RDWR, 0766); err == nil {
 			l.SetOutput(i, file, file)
@@ -49,5 +49,5 @@ func (b *build) Run(ctx context.Context, args ...string) error {
 			log.Warning("Failed to open tmux pane %s. Error: %s\n", pane, err)
 		}
 	}
-	return l.Run(ctx, args[0], b.Target, b.NoDeps)
+	return l.Run(args[0], b.Target, b.NoDeps)
 }

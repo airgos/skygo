@@ -32,7 +32,7 @@ func (c *clean) Run(ctx context.Context, args ...string) error {
 		return commandLineErrorf("carton name must be supplied")
 	}
 
-	err := load.NewLoad(c.name, 1).Clean(ctx, args[0], c.Force)
+	err := load.NewLoad(ctx, c.name, 1).Clean(args[0], c.Force)
 	if err == runbook.ErrUnknownTask {
 		return fmt.Errorf("carton %s has no task clean, try to add flag -force", args[0])
 	}

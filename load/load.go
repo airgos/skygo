@@ -27,7 +27,7 @@ import (
 
 // Load represent state of load
 type Load struct {
-	loaders int
+	loaders int // the number of loaders
 	pool    *xsync.Pool
 
 	vars map[string]string //global key-value
@@ -39,8 +39,10 @@ type Load struct {
 	err  loadError
 	once sync.Once
 
+	ctx    context.Context
 	cancel context.CancelFunc
-	exit   func()
+
+	exit func() // clean up function
 
 	loaded sync.Map // record cartons loaded
 }
@@ -70,15 +72,21 @@ func (l *loadError) Error() string {
 
 // NewLoad create load to build carton
 // loaders represent how many loader work. if its value is 0, it will use default value
-func NewLoad(name string, loaders int) *Load {
+func NewLoad(ctx context.Context, name string, loaders int) *Load {
 
 	buildir := config.GetVar(config.BUILDIR)
 	lockfile := filepath.Join(buildir, name+".lockfile")
 
 	if _, err := os.Stat(lockfile); err == nil {
 		fmt.Printf("another instance %s is running", name)
-		os.Exit(0)
+		os.Exit(1)
 	}
+
+	if err := carton.BuildInventory(ctx); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
 	os.Create(lockfile)
 
 	if loaders == 0 {
@@ -111,6 +119,11 @@ func NewLoad(name string, loaders int) *Load {
 		return &x
 	})
 
+	load.ctx, load.cancel = context.WithCancel(ctx)
+	load.exit = func() {
+		os.Remove(lockfile)
+	}
+
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
@@ -120,9 +133,6 @@ func NewLoad(name string, loaders int) *Load {
 			load.cancel()
 		}
 	}()
-	load.exit = func() {
-		os.Remove(lockfile)
-	}
 
 	os.MkdirAll(config.GetVar(config.BUILDIR), 0755)
 	os.MkdirAll(config.GetVar(config.DLDIR), 0755)
@@ -227,11 +237,9 @@ func (l *Load) run(ctx context.Context, name, target string, isNative bool) {
 }
 
 // Run start loading
-func (l *Load) Run(ctx context.Context, name, target string, nodeps bool) error {
+func (l *Load) Run(name, target string, nodeps bool) error {
 
 	defer l.exit()
-	ctx, cancel := context.WithCancel(ctx)
-	l.cancel = cancel
 
 	if nodeps {
 
@@ -239,10 +247,10 @@ func (l *Load) Run(ctx context.Context, name, target string, nodeps bool) error 
 		if err != nil {
 			return err
 		}
-		return l.perform(ctx, b, target, true, isNative)
+		return l.perform(l.ctx, b, target, true, isNative)
 	}
 
-	l.run(ctx, name, target, false)
+	l.run(l.ctx, name, target, false)
 	if l.err.err != nil {
 		return &l.err
 	}
@@ -250,11 +258,9 @@ func (l *Load) Run(ctx context.Context, name, target string, nodeps bool) error 
 }
 
 // Clean invokes carton's method Clean
-func (l *Load) Clean(ctx context.Context, name string, force bool) error {
+func (l *Load) Clean(name string, force bool) error {
 
 	defer l.exit()
-	ctx, cancel := context.WithCancel(ctx)
-	l.cancel = cancel
 
 	c, _, isNative, err := l.find(name)
 	if err != nil {
@@ -266,7 +272,7 @@ func (l *Load) Clean(ctx context.Context, name string, force bool) error {
 		return nil
 	}
 	addEventListener(c.Runbook())
-	return l.perform(ctx, c, "clean", true, isNative)
+	return l.perform(l.ctx, c, "clean", true, isNative)
 }
 
 func (l *Load) setupArg(carton carton.Builder, arg *runbook.Arg,

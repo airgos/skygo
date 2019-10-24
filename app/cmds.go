@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"os"
 
-	"merge/carton"
 	"merge/log"
 )
 
@@ -64,12 +63,6 @@ func (app *App) Run(ctx context.Context, args ...string) error {
 
 	if len(args) == 0 {
 		return commandLineErrorf("command must be supplied")
-	}
-
-	if err := carton.BuildInventory(ctx); err != nil {
-
-		fmt.Println(err)
-		os.Exit(1)
 	}
 
 	name, args := args[0], args[1:]
