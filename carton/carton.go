@@ -182,12 +182,9 @@ func (c *Carton) SrcDir(wd string) string {
 		return c.srcpath
 	}
 
-	if c.srcpath != "" {
-		d := filepath.Join(wd, c.srcpath)
-		if info, e := os.Stat(d); e != nil || !info.IsDir() {
-			log.Error("SRCDIR %s does not existed", d)
-		}
-		return d
+	if c.srcpath != "" { // SrcDir is configured explicitily by SetSrcDir
+		// don't check its existence
+		return filepath.Join(wd, c.srcpath)
 	}
 
 	d := filepath.Join(wd, c.name)
