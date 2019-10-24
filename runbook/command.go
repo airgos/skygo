@@ -53,15 +53,19 @@ func (c *Command) Run(stage string) error {
 	go func() {
 		select {
 		case <-c.ctx.Done():
-			// kill all processes in the process group by sending a KILL to
-			//-PID of the process, which is the same as -PGID. Assuming that
-			//the child process did not use setpgid(2) when spawning its
-			//own child, this should kill the child along with all of its
-			//children on any *Nix systems.
-			syscall.Kill(-c.Cmd.Process.Pid, syscall.SIGKILL)
-			c.ctxErr = c.ctx.Err()
-			log.Warning("Runbook: kill child processes started by %s@%s since %v",
-				arg.Owner, stage, c.ctxErr)
+			select {
+			case <-waitDone: // command had been finished, ignore cancelation
+			default:
+				// kill all processes in the process group by sending a KILL to
+				//-PID of the process, which is the same as -PGID. Assuming that
+				//the child process did not use setpgid(2) when spawning its
+				//own child, this should kill the child along with all of its
+				//children on any *Nix systems.
+				syscall.Kill(-c.Cmd.Process.Pid, syscall.SIGKILL)
+				c.ctxErr = c.ctx.Err()
+				log.Trace("Runbook: kill child processes started by %s@%s since %v",
+					arg.Owner, stage, c.ctxErr)
+			}
 		case <-waitDone:
 		}
 	}()
