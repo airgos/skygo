@@ -46,7 +46,7 @@ type Carton struct {
 	cartons []string
 
 	file      []string // which files offer this carton
-	srcpath   string   // path(dir) of SRC code
+	srcdir    string   // path(dir) of Source code, value of var S
 	filespath []string // search dirs for scheme file://
 
 	depends      []string // needed for both running and building
@@ -178,13 +178,13 @@ func (c *Carton) Depends(deps ...string) []string {
 // WORKDIR depends on ARCH. one carton has different WORKDIR for different ARCH
 func (c *Carton) SrcDir(wd string) string {
 
-	if filepath.IsAbs(c.srcpath) {
-		return c.srcpath
+	if filepath.IsAbs(c.srcdir) {
+		return c.srcdir
 	}
 
-	if c.srcpath != "" { // SrcDir is configured explicitily by SetSrcDir
+	if c.srcdir != "" { // SrcDir is configured explicitily by SetSrcDir
 		// don't check its existence
-		return filepath.Join(wd, c.srcpath)
+		return filepath.Join(wd, c.srcdir)
 	}
 
 	d := filepath.Join(wd, c.name)
@@ -201,8 +201,9 @@ func (c *Carton) SrcDir(wd string) string {
 	return ""
 }
 
-// SetSrcDir set source directory explicitily. dir can be relative or absolute path
-// relative path must be under WORKDIR
+// SetSrcDir set source directory explicitily.
+// dir can be relative or absolute path
+// relative path must be under WORKDIR or under caller's directory path
 // it's useful to support absolute path for development
 // if dir has prefix '~', it will be extended
 func (c *Carton) SetSrcDir(dir string) error {
@@ -210,12 +211,23 @@ func (c *Carton) SetSrcDir(dir string) error {
 	if strings.HasPrefix(dir, "~") {
 		dir = strings.Replace(dir, "~", os.Getenv("HOME"), 1)
 	}
-	c.srcpath = dir
+
+	// try to find dir under Caller's path
+	// if found, absolute path will be assigned to srcdir
+	if !filepath.IsAbs(dir) {
+		_, file, _, _ := runtime.Caller(1)
+		r := filepath.Join(filepath.Dir(file), dir)
+		if _, e := os.Stat(r); e == nil {
+			dir = r
+		}
+	}
+	c.srcdir = dir
 	return nil
 }
 
-// AddFilePath appends one path to File Path
-// dir will be joined with directory path of which file invokes AddFilePath
+// AddFilePath appends one path to FilesPath if it does exist
+// dir will be joined with the directory path of caller(which
+// file invokes AddFilePath)
 func (c *Carton) AddFilePath(dir string) error {
 
 	if filepath.IsAbs(dir) {

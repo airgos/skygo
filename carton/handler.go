@@ -12,12 +12,14 @@ import (
 // Modifier is the interface to help modify carton
 type Modifier interface {
 
-	// appends one path to File Path
-	// dir will be joined with directory path of which file invokes AddFilePath
+	// AddFilePath appends one path to FilesPath if it does exist
+	// dir will be joined with the directory path of caller(which
+	// file invokes AddFilePath)
 	AddFilePath(dir string) error
 
-	// SetSrcDir set source directory explicitily. dir can be relative or absolute path
-	// relative path must be under WORKDIR
+	// SetSrcDir set source directory explicitily.
+	// dir can be relative or absolute path
+	// relative path must be under WORKDIR or under caller's directory path
 	// it's useful to support absolute path for development
 	// if dir has prefix '~', it will be extended
 	SetSrcDir(dir string) error
