@@ -56,7 +56,7 @@ func patch(ctx context.Context) error {
 
 			if strings.HasSuffix(fpath, ".diff") || strings.HasSuffix(fpath, ".patch") {
 
-				log.Trace("To apply patch %s, fpath")
+				log.Trace("To apply patch %s", fpath)
 				command := runbook.NewCommand(ctx, "/bin/bash", "-c", patchcmd)
 
 				patch := filepath.Join(arg.Wd, fpath)

@@ -172,11 +172,17 @@ func (rb *Runbook) Range(ctx context.Context, name string) error {
 func (rb *Runbook) Play(ctx context.Context, name string) error {
 
 	arg, _ := FromContext(ctx)
-	log.Trace("Play stage or task %s held by %s", name, arg.Owner)
 
 	if s := rb.Stage(name); s != nil {
-		return s.Play(ctx)
+		if num := s.tasks.Len(); num > 0 {
+			log.Trace("Play stage %s[tasks=%d] held by %s",
+				name, num, arg.Owner)
+			return s.Play(ctx)
+		}
+		log.Warning("Stage %s held by %s has no tasks", name, arg.Owner)
+		return nil
 	}
+	log.Trace("Run independent task %s held by %s", name, arg.Owner)
 	return rb.RunTask(ctx, name)
 }
 
