@@ -149,7 +149,8 @@ func (tc *TaskCmd) Run(ctx context.Context) error {
 
 	for _, d := range arg.FilesPath {
 		path := filepath.Join(d, tc.name)
-		if _, err := os.Stat(path); err == nil {
+		if info, err := os.Stat(path); err == nil &&
+			info.Mode().IsRegular() {
 
 			b, _ := ioutil.ReadFile(path)
 			if !exp.Match(b) {
