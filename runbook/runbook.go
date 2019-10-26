@@ -207,11 +207,12 @@ func (s *Stage) Name() string {
 }
 
 // Disable makrs Play is not allowed to be run
-func (s *Stage) Disable() {
+func (s *Stage) Disable() *Stage {
 
 	s.m.Lock()
 	s.disabled = true
 	s.m.Unlock()
+	return s
 }
 
 // InsertAfter insert a new stage @name after current one
@@ -258,12 +259,13 @@ func (s *Stage) AddTask(weight int, task interface{}) (*Stage, error) {
 }
 
 // DelTask delete task of weight
-func (s *Stage) DelTask(weight int) {
+func (s *Stage) DelTask(weight int) *Stage {
 
 	if s == nil {
-		return
+		return nil
 	}
 	s.tasks.Del(weight)
+	return s
 }
 
 // Reset clear executed status, then s.Play can be run again
