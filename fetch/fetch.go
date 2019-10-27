@@ -7,7 +7,6 @@ package fetch
 import (
 	"container/list"
 	"context"
-	"errors"
 	"fmt"
 	"sort"
 	"strconv"
@@ -39,24 +38,8 @@ type SrcURL struct {
 }
 
 type fetchCmd struct {
-	fetch interface{}
+	fetch func(ctx context.Context, from string, notify func(bool)) error
 	url   string
-}
-
-// Download grab url in Resource
-// notify tell whether source code change is detected
-func (cmd *fetchCmd) Download(ctx context.Context, res *Resource,
-	notify func(bool)) error {
-
-	url := strings.TrimSpace(cmd.url)
-	switch m := cmd.fetch.(type) {
-
-	case func(context.Context, string, func(bool)) error:
-		return m(ctx, url, notify)
-
-	default:
-		return errors.New("Unknown fetch command")
-	}
 }
 
 // NewFetch create fetch state
@@ -183,7 +166,8 @@ func (fetch *Resource) Download(ctx context.Context,
 		g.Go(func() error {
 
 			fetchCmd := e.Value.(*fetchCmd)
-			if err := fetchCmd.Download(ctx, fetch, func(updated bool) {
+			url := strings.TrimSpace(fetchCmd.url)
+			if err := fetchCmd.fetch(ctx, url, func(updated bool) {
 				if notify != nil && updated {
 					once.Do(func() { notify(ctx) })
 				}
