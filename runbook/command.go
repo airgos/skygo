@@ -7,6 +7,7 @@ package runbook
 import (
 	"context"
 	"fmt"
+	"os"
 	"os/exec"
 	"syscall"
 
@@ -28,6 +29,8 @@ func NewCommand(ctx context.Context, name string, args ...string) *Command {
 	cmd := exec.CommandContext(ctx, name, args...)
 	cmd.Stdout, cmd.Stderr = arg.Output()
 	cmd.Dir = arg.SrcDir(arg.Wd)
+
+	cmd.Env = os.Environ() // inherits OS global env, like HTTP_PROXY
 	arg.VisitVars(func(k, v string) {
 		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", k, v))
 	})
