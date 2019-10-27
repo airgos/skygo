@@ -24,7 +24,8 @@ import (
 // don't unpack again if it's done
 
 // support scheme http and https. if file is archiver, unpack it
-func httpAndUnpack(ctx context.Context, dd string, url string,
+func httpAndUnpack(ctx context.Context, url string,
+	httpGet func(ctx context.Context, from, to string) error,
 	notify func(bool)) error {
 
 	arg, _ := runbook.FromContext(ctx)
@@ -34,32 +35,46 @@ func httpAndUnpack(ctx context.Context, dd string, url string,
 	if len(slice) != 2 {
 		return fmt.Errorf("%s - URL[%s] have no checksum", arg.Owner, url)
 	}
-	u := slice[0]
 
-	base := filepath.Base(u)
-	fpath := filepath.Join(dd, base)
+	from := slice[0]
+	checksum := slice[1]
+	dldir, _ := arg.LookupVar("DLDIR")
+	to := filepath.Join(dldir, filepath.Base(from))
 
-	fmt.Fprintf(stdout, "To download %s\n", u)
-	if e := download(ctx, u, slice[1], fpath); e != nil {
-		return e
+	done := to + ".done"
+	if _, err := os.Stat(done); err != nil {
+
+		// TODO: if found in mirror, replace with mirror URL
+		fmt.Fprintf(stdout, "To download %s\n", from)
+		if httpGet != nil {
+			os.Remove(to)
+			if err := httpGet(ctx, from, to); err != nil {
+				return err
+			}
+		} else {
+			if err := builtinGet(ctx, from, to); err != nil {
+				return err
+			}
+		}
+
+		if ok, sum := utils.Sha256Matched(checksum, to); !ok {
+			return fmt.Errorf("ErrCheckSum: %s %s", to, sum)
+		}
+		os.Create(done)
 	}
 
-	if unar := utils.NewUnarchive(fpath); unar != nil {
-		fmt.Fprintf(stdout, "unarchive %s\n", fpath)
-		if e := unar.Unarchive(fpath, arg.Wd); e != nil {
-			return fmt.Errorf("unarchive %s failed:%s", base, e.Error())
+	if unar := utils.NewUnarchive(to); unar != nil {
+		fmt.Fprintf(stdout, "unarchive %s\n", to)
+		if e := unar.Unarchive(to, arg.Wd); e != nil {
+			return fmt.Errorf("unarchive %s failed:%s", to, e.Error())
 		}
 	}
 	return nil
 }
 
-func download(ctx context.Context, url, checksum, fpath string) error {
+func builtinGet(ctx context.Context, from, to string) error {
 
-	done := fpath + ".done"
-	if _, e := os.Stat(done); e == nil {
-		return nil
-	}
-	r, e := http.Head(url)
+	r, e := http.Head(from)
 	if e != nil {
 		return e
 	}
@@ -68,28 +83,16 @@ func download(ctx context.Context, url, checksum, fpath string) error {
 	h := r.Header
 	a := h.Get("Accept-Ranges")
 	l := h.Get("Content-Length")
-
 	length, _ := strconv.Atoi(l)
+
 	// don't fetch in parallel if file size is less then 0.5M=0.5*1024*1024
 	if a != "" && length > 524288 {
-		if err := fetchInParallel(ctx, fpath, url, length); err != nil {
-			return err
-		}
-	} else {
-		if err := fetchSlice(ctx, 0, 0, url, fpath); err != nil {
-			return err
-		}
+		return fetchInParallel(ctx, to, from, length)
 	}
-
-	if ok, sum := utils.Sha256Matched(checksum, fpath); !ok {
-		return fmt.Errorf("ErrCheckSum: %s %s", fpath, sum)
-	}
-
-	os.Create(done)
-	return nil
+	return fetchSlice(ctx, 0, 0, from, to)
 }
 
-func fetchSlice(ctx context.Context, start, stop int, url, fpath string) error {
+func fetchSlice(ctx context.Context, start, stop int, url, to string) error {
 
 	client := http.Client{}
 	req, e := http.NewRequestWithContext(ctx, "GET", url, nil)
@@ -106,13 +109,13 @@ func fetchSlice(ctx context.Context, start, stop int, url, fpath string) error {
 	}
 	defer r.Body.Close()
 
-	if e = utils.CopyFile(fpath, 0664, r.Body); e != nil {
+	if e = utils.CopyFile(to, 0664, r.Body); e != nil {
 		return e
 	}
 	return nil
 }
 
-func fetchInParallel(ctx context.Context, fpath, url string, length int) error {
+func fetchInParallel(ctx context.Context, to, url string, length int) error {
 	var e error
 
 	connections := runtime.NumCPU()
@@ -123,7 +126,7 @@ func fetchInParallel(ctx context.Context, fpath, url string, length int) error {
 	g, ctx := xsync.WithContext(ctx)
 
 	for i := 0; i < connections; i++ {
-		slice := fmt.Sprintf("%s.%d", fpath, i)
+		slice := fmt.Sprintf("%s.%d", to, i)
 		slices[i] = slice
 
 		start := sub * i
@@ -148,7 +151,7 @@ func fetchInParallel(ctx context.Context, fpath, url string, length int) error {
 	}
 
 	r := io.MultiReader(files...)
-	if e = utils.CopyFile(fpath, 0664, r); e != nil {
+	if e = utils.CopyFile(to, 0664, r); e != nil {
 		return e
 	}
 

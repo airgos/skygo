@@ -198,7 +198,7 @@ func (vcs *vcsCmd) syncTag() error {
 	return nil
 }
 
-func vcsFetch(ctx context.Context, dd string, url string,
+func vcsFetch(ctx context.Context, url string,
 	notify func(bool)) (err error) {
 
 	var rev1, rev2 []byte

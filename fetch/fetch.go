@@ -48,17 +48,11 @@ type fetchCmd struct {
 func (cmd *fetchCmd) Download(ctx context.Context, res *Resource,
 	notify func(bool)) error {
 
+	url := strings.TrimSpace(cmd.url)
 	switch m := cmd.fetch.(type) {
 
-	// scheme file: handler
 	case func(context.Context, string, func(bool)) error:
-		return m(ctx, cmd.url, notify)
-
-	// for http,https,vscGit
-	case func(context.Context, string, string, func(bool)) error:
-		arg, _ := runbook.FromContext(ctx)
-		dir, _ := arg.LookupVar("DLDIR")
-		return m(ctx, dir, cmd.url, notify)
+		return m(ctx, url, notify)
 
 	default:
 		return errors.New("Unknown fetch command")
@@ -224,7 +218,7 @@ func (src *SrcURL) Push(srcurl string) *SrcURL {
 		}
 
 		if strings.HasPrefix(u, "http://") || strings.HasPrefix(u, "https://") {
-			src.pushHTTP(u)
+			src.PushHTTP(u, nil)
 			continue
 		}
 		panic(fmt.Sprintf("Unknown source URL: %s", u))
@@ -267,15 +261,34 @@ func (src *SrcURL) PushVcs(srcurl string) *SrcURL {
 	return src
 }
 
-// pushHTTP push Http or Https URL to SrcURL
+// PushHTTP push Http or Https URL to SrcURL
 // srcurl's scheme must be https:// or http://, and sha256 checksum must be
 // append at the end with delimeter #
 // e.g.  http://x.y.z/foo.tar.bz2#sha256
-func (src *SrcURL) pushHTTP(srcurl string) *SrcURL {
+//
+// httpGet is the caller own get function, it's optional(value is nil).
+// httpGet does not need to handle checksum, since parameter from does not
+// contain checksum. Example implementation:
+// func wget(ctx context.Context, from, to string) error {
+
+// 	arg := "-t 2 -T 30 -nv --no-check-certificate"
+// 	args := strings.Fields(fmt.Sprintf("%s %s", arg, from))
+
+// 	cmd := runbook.NewCommand(ctx, "wget", args...)
+// 	cmd.Cmd.Dir = filepath.Dir(to)
+// 	if err := cmd.Cmd.Run(); err != nil {
+// 		return err
+// 	}
+// 	return nil
+// }
+func (src *SrcURL) PushHTTP(srcurl string,
+	httpGet func(ctx context.Context, from, to string) error) *SrcURL {
 
 	url := fetchCmd{
-		fetch: httpAndUnpack,
-		url:   srcurl,
+		fetch: func(ctx context.Context, url string, notify func(bool)) error {
+			return httpAndUnpack(ctx, url, httpGet, notify)
+		},
+		url: srcurl,
 	}
 	src.head.PushBack(&url)
 	return src
