@@ -219,9 +219,11 @@ func (l *Load) run(ctx context.Context, name, target string, isNative bool) {
 		wg.Add(len(deps))
 		for _, d := range deps {
 			name := d
-			target := ""
 			if i := strings.LastIndex(d, "@"); i >= 0 {
-				name, target = d[:i], d[i+1:]
+				name = d[:i]
+				if target == "" {
+					target = d[i+1:]
+				}
 			}
 			go func(ctx context.Context, name, target string) {
 
