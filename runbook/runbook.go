@@ -310,31 +310,16 @@ func (s *Stage) Play(ctx context.Context) error {
 
 // Arg holds arguments for runbook
 type Arg struct {
-	// who own this, same as LookupVar("PN")
+	// who own this, same as GetVar("PN")
 	Owner string
+
+	Private interface{} // private data
 
 	// FilesPath is a collection of directory that's be used for locating local file
 	FilesPath []string
 
-	// value of WORKDIR, same as LookupVar("WORKDIR")
-	Wd string
-
-	// SrcDir calculate Source Dir under WORKDIR
-	SrcDir func(wd string) string
-
-	// Visit each variable and export to command task
-	// it shound not range Vars
-	VisitVars func(func(key, value string))
-
-	// LookupVar retrieves the value of the variable named by the key.
-	// If the variable is present, value (which may be empty) is returned
-	// and the boolean is true. Otherwise the returned value will be empty
-	// and the boolean will be false.
-	// golang task should call it to get value of Variable
-	LookupVar func(key string) (string, bool)
-
-	// LookupVar implementation check Vars lastly if not found at other place
-	Vars map[string]string
+	KV          // inherits KV, each runbook context has its own KV
+	Kv KVGetter // extenral KV Getter
 
 	// underline IO, call method Output() to get IO
 	stdout, stderr io.Writer
@@ -344,6 +329,27 @@ type Arg struct {
 	Writer func() (stdout, stderr io.Writer)
 
 	m sync.Mutex
+}
+
+// visitVars range external and internal key-value data
+func (arg *Arg) visitVars(f func(key, value string)) {
+	arg.Kv.Range(f)
+	arg.Range(f)
+}
+
+// LookupVar retrieves the value of the variable named by the key.
+// If the variable is present, value (which may be empty) is returned
+// and the boolean is true. Otherwise the returned value will be empty
+// and the boolean will be false.
+func (arg *Arg) LookupVar(key string) (string, bool) {
+
+	// get from external KV firstly
+	if value, ok := arg.Kv.LookupVar(key); ok {
+		return value, true
+	}
+
+	value, ok := arg.KV.LookupVar(key)
+	return value, ok
 }
 
 // Output return IO stdout & stderr

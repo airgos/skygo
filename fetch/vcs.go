@@ -214,7 +214,7 @@ func vcsFetch(ctx context.Context, url string,
 	vcs := byRepo(repo, tag)
 	vcs.ctx = ctx
 
-	if e := vcs.lookupRepo(arg.Wd); e != nil {
+	if e := vcs.lookupRepo(arg.GetVar("WORKDIR")); e != nil {
 		return e
 	}
 

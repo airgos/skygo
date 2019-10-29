@@ -43,7 +43,7 @@ func logfileExit(name string, arg *runbook.Arg, x interface{}) error {
 
 func logfileEnter(stage string, arg *runbook.Arg) (bool, interface{}, error) {
 
-	logfile := filepath.Join(arg.Vars["T"], stage+".log")
+	logfile := filepath.Join(arg.GetVar("T"), stage+".log")
 	file, err := os.Create(logfile)
 	if err != nil {
 		return false, nil, fmt.Errorf("Failed to create %s", logfile)
@@ -75,7 +75,7 @@ func stageSetDone(stage string, arg *runbook.Arg, x interface{}) error {
 
 func stageStatus(stage string, arg *runbook.Arg) (bool, interface{}, error) {
 
-	done := filepath.Join(arg.Vars["T"], stage+".done")
+	done := filepath.Join(arg.GetVar("T"), stage+".done")
 
 	if _, err := os.Stat(done); err == nil {
 		log.Trace("%s was executed last time, skip it!", stage)
@@ -86,17 +86,17 @@ func stageStatus(stage string, arg *runbook.Arg) (bool, interface{}, error) {
 
 func stageReset(stage string, arg *runbook.Arg) error {
 
-	done := filepath.Join(arg.Vars["T"], stage+".done")
+	done := filepath.Join(arg.GetVar("T"), stage+".done")
 	os.Remove(done)
 	return nil
 }
 
 func cleanTask(task string, arg *runbook.Arg) (bool, interface{}, error) {
 	if task == "clean" {
-		os.RemoveAll(arg.Vars["T"])
+		os.RemoveAll(arg.GetVar("T"))
 
 		// only run clean task if S does exist
-		dir := arg.Vars["S"]
+		dir := arg.GetVar("S")
 		if dir == "" {
 			return true, nil, nil
 		}
@@ -109,15 +109,15 @@ func cleanTask(task string, arg *runbook.Arg) (bool, interface{}, error) {
 }
 
 func tryToSetVarS(stage string, arg *runbook.Arg, x interface{}) error {
-	if arg.Vars["S"] != "" {
+	if _, ok := arg.LookupVar("S"); ok {
 		return nil
 	}
 
-	c, _, _, _ := carton.Find(arg.Owner)
-	if dir := c.SrcDir(arg.Wd); dir == "" {
+	c := arg.Private.(carton.Builder)
+	if dir := c.SrcDir(arg.GetVar("WORKDIR")); dir == "" {
 		return fmt.Errorf("Failed to find SrcDir automatically! Please set it explicitily by SetSrcDir.")
 	} else {
-		arg.Vars["S"] = dir
+		arg.SetKv("S", dir)
 	}
 	return nil
 }

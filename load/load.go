@@ -179,9 +179,9 @@ func (l *Load) perform(ctx context.Context, c carton.Builder, target string,
 	// reset buffer
 	x.buf.Reset()
 
-	os.MkdirAll(x.arg.Wd, 0755)        //WORKDIR
-	os.MkdirAll(x.arg.Vars["T"], 0755) //temp dir
-	os.MkdirAll(x.arg.Vars["D"], 0755)
+	os.MkdirAll(x.arg.GetVar("WORKDIR"), 0755) //WORKDIR
+	os.MkdirAll(x.arg.GetVar("T"), 0755)       //temp dir
+	os.MkdirAll(x.arg.GetVar("D"), 0755)
 
 	if nodeps && target != "" {
 		err = c.Runbook().Play(ctx, target)
@@ -290,38 +290,34 @@ func (l *Load) setupArg(carton carton.Builder, arg *runbook.Arg,
 
 	arg.Owner = carton.Provider()
 	arg.FilesPath = carton.FilesPath()
-	arg.Wd = WorkDir(carton, isNative)
-	arg.SrcDir = carton.SrcDir
-	arg.VisitVars = func(fn func(key, value string)) {
-		carton.VisitVars(fn)
+	arg.Private = carton
+	arg.KV.Name = arg.Owner
+
+	wd := WorkDir(carton, isNative)
+
+	// export global key-value hold by Load
+	for k, v := range l.vars {
+		arg.SetKv(k, v)
 	}
 
-	arg.LookupVar = func(key string) (string, bool) {
-		// get key from carton firstly
-		if value, ok := carton.LookupVar(key); ok {
-			return value, ok
-		}
-		value, ok := arg.Vars[key]
-		return value, ok
-	}
-
-	arg.Vars = map[string]string{
+	// key-value for each carton's context
+	for k, v := range map[string]string{
 		"ISNATIVE": fmt.Sprintf("%v", isNative),
-		"WORKDIR":  arg.Wd,
+		"WORKDIR":  wd,
 
 		"PN": carton.Provider(),
-		"S":  carton.SrcDir(arg.Wd),
-		"T":  filepath.Join(arg.Wd, "temp"),
-		"D":  filepath.Join(arg.Wd, "image"),
+		"T":  filepath.Join(wd, "temp"),
+		"D":  filepath.Join(wd, "image"),
 
 		"TARGETARCH":   getTargetArch(carton, isNative),
 		"TARGETOS":     getTargetOS(carton, isNative),
 		"TARGETVENDOR": getTargetVendor(carton, isNative),
+	} {
+		arg.SetKv(k, v)
 	}
 
-	// export global vars hold by Load
-	for k, v := range l.vars {
-		arg.Vars[k] = v
+	if dir := carton.SrcDir(wd); dir != "" {
+		arg.SetKv("S", dir)
 	}
 }
 
