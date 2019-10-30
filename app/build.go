@@ -19,6 +19,7 @@ type build struct {
 	NoDeps  bool   `flag:"nodeps" help:"don't check dependency"`
 	Target  string `flag:"play" help:"one indenpent task or stage name"`
 	Loaders int    `flag:"loaders" help:"set the number of jobs to build cartons"`
+	Force   bool   `flag:"force" help:"force to run"`
 }
 
 func (*build) Name() string      { return "carton" }
@@ -49,5 +50,5 @@ func (b *build) Run(ctx context.Context, args ...string) error {
 			log.Warning("Failed to open tmux pane %s. Error: %s\n", pane, err)
 		}
 	}
-	return l.Run(args[0], b.Target, b.NoDeps)
+	return l.Run(args[0], b.Target, b.NoDeps, b.Force)
 }

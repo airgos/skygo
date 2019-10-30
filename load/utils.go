@@ -68,6 +68,12 @@ func getTargetVendor(c carton.Builder, isNative bool) string {
 	return config.GetVar(config.MACHINEVENDOR)
 }
 
+// value of var S
+func tempDir(c carton.Builder, isNative bool) string {
+	wd := WorkDir(c, isNative)
+	return filepath.Join(wd, "temp")
+}
+
 func isStagePlayed(stage string, tempDir string) bool {
 
 	done := filepath.Join(tempDir, stage+".done")

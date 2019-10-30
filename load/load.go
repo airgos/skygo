@@ -251,17 +251,31 @@ func (l *Load) run(ctx context.Context, name, target string, isNative bool) {
 }
 
 // Run start loading
-func (l *Load) Run(name, target string, nodeps bool) error {
+func (l *Load) Run(name, target string, nodeps, force bool) error {
 
 	defer l.exit()
 
-	if nodeps {
+	if nodeps || force {
 
-		b, _, isNative, err := l.find(name)
+		c, _, isNative, err := l.find(name)
 		if err != nil {
 			return err
 		}
-		return l.perform(l.ctx, b, target, true, isNative)
+
+		if force {
+			rb := c.Runbook()
+			t := tempDir(c, isNative)
+			if target != "" {
+				markStagePlayed(target, t, false)
+			} else {
+				for stage := rb.Head(); stage != nil; stage = stage.Next() {
+					markStagePlayed(stage.Name(), t, false)
+				}
+			}
+		}
+		if nodeps {
+			return l.perform(l.ctx, c, target, true, isNative)
+		}
 	}
 
 	l.run(l.ctx, name, target, false)
