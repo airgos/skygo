@@ -30,8 +30,6 @@ func (l *link) Depends(dep ...string) []string      { return l.h.Depends() }
 func (l *link) Runbook() *runbook.Runbook           { return l.h.Runbook() }
 func (l *link) String() string                      { return l.h.String() }
 
-func (l *link) SetVar(key, value string) { l.SetVar(key, value) }
-
 // LookupVar retrieves the value of the variable named by the key.
 // If the variable is present, value (which may be empty) is returned
 // and the boolean is true. Otherwise the returned value will be empty
@@ -44,11 +42,11 @@ func (l *link) LookupVar(key string) (string, bool) {
 	return l.h.LookupVar(key)
 }
 
-// VisitVars visit each variable
-func (l *link) VisitVars(f func(key, value string)) {
-	l.VisitVars(func(key, value string) {
+// Range visits each item in KV
+func (l *link) Range(f func(key, value string)) {
+	l.h.Range(func(key, value string) {
 		if key == "CN" {
-			value = l.alias
+			value = l.alias // overwrite value of key CN
 		}
 		f(key, value)
 	})

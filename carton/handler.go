@@ -29,14 +29,7 @@ type Modifier interface {
 	Depends(dep ...string) []string
 	BuildDepends(dep ...string) []string
 
-	// LookupVar retrieves the value of the variable named by the key.
-	// If the variable is present, value (which may be empty) is returned
-	// and the boolean is true. Otherwise the returned value will be empty
-	// and the boolean will be false.
-	LookupVar(key string) (string, bool)
-
-	// SetVar sets the value of the variable named by the key.
-	SetVar(key, value string)
+	runbook.KVSetter
 
 	// Runbook give runbook
 	Runbook() *runbook.Runbook
@@ -74,14 +67,7 @@ type Builder interface {
 	// Return fetch state
 	Resource() *fetch.Resource
 
-	// LookupVar retrieves the value of the variable named by the key.
-	// If the variable is present, value (which may be empty) is returned
-	// and the boolean is true. Otherwise the returned value will be empty
-	// and the boolean will be false.
-	LookupVar(key string) (string, bool)
-
-	// VisitVars visit each variable
-	VisitVars(f func(key, value string))
+	runbook.KVGetter
 
 	// return where source code is under WORKDIR
 	SrcDir(wd string) string

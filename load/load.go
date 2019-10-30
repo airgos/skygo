@@ -291,6 +291,7 @@ func (l *Load) setupArg(carton carton.Builder, arg *runbook.Arg,
 	arg.Owner = carton.Provider()
 	arg.FilesPath = carton.FilesPath()
 	arg.Private = carton
+	arg.Kv = carton
 	arg.KV.Name = arg.Owner
 
 	wd := WorkDir(carton, isNative)

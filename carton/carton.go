@@ -55,7 +55,7 @@ type Carton struct {
 	fetch   *fetch.Resource
 	runbook *runbook.Runbook
 
-	vars map[string]string
+	runbook.KV // embed key-value
 }
 
 // NewCarton create a carton and add to inventory
@@ -94,14 +94,14 @@ func (c *Carton) Init(file string, arg Modifier, modify func(arg Modifier)) {
 
 	add(c, file, func() {
 		c.cartons = []string{}
-		c.vars = make(map[string]string)
 		c.fetch = fetch.NewFetch()
 
 		c.file = []string{}
 		c.filespath = []string{}
 
 		c.cartons = append(c.cartons, c.name)
-		c.vars["CN"] = c.name //CN: carton name
+		c.SetKv("CN", c.name) //CN: carton name
+		c.KV.Name = c.name
 
 		modify(arg)
 	})
@@ -261,27 +261,6 @@ func (c *Carton) Runbook() *runbook.Runbook {
 // SetRunbook assign runbook
 func (c *Carton) SetRunbook(rb *runbook.Runbook) {
 	c.runbook = rb
-}
-
-// LookupVar retrieves the value of the variable named by the key.
-// If the variable is present, value (which may be empty) is returned
-// and the boolean is true. Otherwise the returned value will be empty
-// and the boolean will be false.
-func (c *Carton) LookupVar(key string) (string, bool) {
-	value, ok := c.vars[key]
-	return value, ok
-}
-
-// SetVar sets the value of the variable named by the key.
-func (c *Carton) SetVar(key, value string) {
-	c.vars[key] = value
-}
-
-// VisitVars visit each variable
-func (c *Carton) VisitVars(f func(key, value string)) {
-	for k, v := range c.vars {
-		f(k, v)
-	}
 }
 
 func (c *Carton) String() string {
