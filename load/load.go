@@ -285,7 +285,6 @@ func (l *Load) Clean(name string, force bool) error {
 		os.RemoveAll(WorkDir(c, isNative))
 		return nil
 	}
-	addEventListener(c.Runbook())
 	return l.perform(l.ctx, c, "clean", true, isNative)
 }
 
