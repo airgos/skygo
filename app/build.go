@@ -9,6 +9,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 
 	"merge/load"
 	"merge/log"
@@ -17,14 +18,18 @@ import (
 type build struct {
 	name    string //top cmd name
 	NoDeps  bool   `flag:"nodeps" help:"don't check dependency"`
-	Target  string `flag:"play" help:"one indenpent task or stage name"`
 	Loaders int    `flag:"loaders" help:"set the number of jobs to build cartons"`
 	Force   bool   `flag:"force" help:"force to run"`
 }
 
 func (*build) Name() string      { return "carton" }
-func (*build) UsageLine() string { return "<carton name>" }
-func (*build) Summary() string   { return "build carton" }
+func (*build) UsageLine() string { return "<carton name[@target]>" }
+func (*build) Summary() string {
+	return `build carton
+target is stage name or independent task name
+info command can show stage & task information
+	`
+}
 
 func (*build) Help(f *flag.FlagSet) {
 
@@ -36,6 +41,7 @@ func (b *build) Run(ctx context.Context, args ...string) error {
 	if len(args) == 0 {
 		return commandLineErrorf("carton name must be supplied")
 	}
+
 	panes := tmuxPanes(ctx)
 	if num := len(panes); num > 0 {
 		b.Loaders = num
@@ -50,5 +56,12 @@ func (b *build) Run(ctx context.Context, args ...string) error {
 			log.Warning("Failed to open tmux pane %s. Error: %s\n", pane, err)
 		}
 	}
-	return l.Run(args[0], b.Target, b.NoDeps, b.Force)
+
+	carton := args[0]
+	target := ""
+	if i := strings.LastIndex(args[0], "@"); i >= 0 {
+		carton = args[0][:i]
+		target = args[0][i+1:]
+	}
+	return l.Run(carton, target, b.NoDeps, b.Force)
 }
