@@ -77,6 +77,7 @@ func (l *loadError) Error() string {
 func NewLoad(ctx context.Context, name string, loaders int) *Load {
 
 	buildir := config.GetVar(config.BUILDIR)
+	os.MkdirAll(buildir, 0755)
 	lockfile := filepath.Join(buildir, name+".lockfile")
 
 	if _, err := os.Stat(lockfile); err == nil {
@@ -89,7 +90,11 @@ func NewLoad(ctx context.Context, name string, loaders int) *Load {
 		os.Exit(1)
 	}
 
-	os.Create(lockfile)
+	if _, err := os.Create(lockfile); err != nil {
+		fmt.Println("Failed to create lockfile", lockfile)
+		os.Exit(1)
+	}
+	log.Trace("Create lock file %s", lockfile)
 
 	if loaders == 0 {
 		loaders = 2 * runtime.NumCPU()
@@ -136,7 +141,6 @@ func NewLoad(ctx context.Context, name string, loaders int) *Load {
 		}
 	}()
 
-	os.MkdirAll(config.GetVar(config.BUILDIR), 0755)
 	os.MkdirAll(config.GetVar(config.DLDIR), 0755)
 	os.MkdirAll(config.GetVar(config.IMAGEDIR), 0755)
 	os.MkdirAll(config.GetVar(config.STAGINGDIR), 0755)
