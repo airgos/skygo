@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 
 	"merge/carton"
-	"merge/log"
 	"merge/runbook"
 )
 
@@ -68,26 +67,18 @@ func logfileEnter(stage string, arg *runbook.Arg) (bool, interface{}, error) {
 
 func stageSetDone(stage string, arg *runbook.Arg, x interface{}) error {
 
-	done := x.(string)
-	os.Create(done)
+	markStagePlayed(stage, arg.GetVar("T"), true)
 	return nil
 }
 
 func stageStatus(stage string, arg *runbook.Arg) (bool, interface{}, error) {
 
-	done := filepath.Join(arg.GetVar("T"), stage+".done")
-
-	if _, err := os.Stat(done); err == nil {
-		log.Trace("%s was executed last time, skip it!", stage)
-		return true, nil, nil
-	}
-	return false, done, nil
+	return isStagePlayed(stage, arg.GetVar("T")), nil, nil
 }
 
 func stageReset(stage string, arg *runbook.Arg) error {
 
-	done := filepath.Join(arg.GetVar("T"), stage+".done")
-	os.Remove(done)
+	markStagePlayed(stage, arg.GetVar("T"), false)
 	return nil
 }
 

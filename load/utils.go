@@ -5,6 +5,7 @@
 package load
 
 import (
+	"os"
 	"path/filepath"
 
 	"merge/carton"
@@ -65,4 +66,29 @@ func getTargetVendor(c carton.Builder, isNative bool) string {
 	}
 
 	return config.GetVar(config.MACHINEVENDOR)
+}
+
+func isStagePlayed(stage string, tempDir string) bool {
+
+	done := filepath.Join(tempDir, stage+".done")
+
+	if _, err := os.Stat(done); err == nil {
+		log.Trace("%s had been played. Skip it!", stage)
+		return true
+	}
+	return false
+}
+
+func markStagePlayed(stage string, tempDir string, played bool) {
+
+	done := filepath.Join(tempDir, stage+".done")
+	if played {
+		if _, err := os.Create(done); err == nil {
+			log.Trace("Mark stage %s to be executed", stage)
+		}
+		return
+	}
+	if err := os.Remove(done); err != nil {
+		log.Error("Failed to mark stage %s to be executed", stage)
+	}
 }
