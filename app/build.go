@@ -20,6 +20,7 @@ type build struct {
 	NoDeps  bool   `flag:"nodeps" help:"don't check dependency"`
 	Loaders int    `flag:"loaders" help:"set the number of jobs to build cartons"`
 	Force   bool   `flag:"force" help:"force to run"`
+	Verbose bool   `flag:"v" help:"verbose output. available when no tmux panes"`
 }
 
 func (*build) Name() string    { return "carton" }
@@ -48,24 +49,30 @@ func (b *build) Run(ctx context.Context, args ...string) error {
 	}
 
 	panes := tmuxPanes(ctx)
-	if num := len(panes); num > 0 {
+	numPanes := len(panes)
+	if numPanes > 0 {
 		if b.Loaders == 0 {
-			b.Loaders = num
+			b.Loaders = numPanes
 		} else { // cmd line assign Loaders
-			if num < b.Loaders {
-				b.Loaders = num
+			if numPanes < b.Loaders {
+				b.Loaders = numPanes
 			}
 		}
 	}
 
-	log.Trace("MaxLoaders is set to %d\n", b.Loaders)
-	l := load.NewLoad(ctx, b.name, b.Loaders)
-	for i := 0; i < b.Loaders; i++ {
-		pane := panes[i]
-		if file, err := os.OpenFile(pane, os.O_RDWR, 0766); err == nil {
-			l.SetOutput(i, file, file)
-		} else {
-			log.Warning("Failed to open tmux pane %s. Error: %s\n", pane, err)
+	l, loaders := load.NewLoad(ctx, b.name, b.Loaders)
+	if numPanes > 0 {
+		for i := 0; i < b.Loaders; i++ {
+			pane := panes[i]
+			if file, err := os.OpenFile(pane, os.O_RDWR, 0766); err == nil {
+				l.SetOutput(i, file, file)
+			} else {
+				log.Warning("Failed to open tmux pane %s. Error: %s\n", pane, err)
+			}
+		}
+	} else if b.Verbose {
+		for i := 0; i < loaders; i++ {
+			l.SetOutput(i, os.Stdout, os.Stderr)
 		}
 	}
 

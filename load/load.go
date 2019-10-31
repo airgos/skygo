@@ -74,7 +74,7 @@ func (l *loadError) Error() string {
 
 // NewLoad create load to build carton
 // loaders represent how many loader work. if its value is 0, it will use default value
-func NewLoad(ctx context.Context, name string, loaders int) *Load {
+func NewLoad(ctx context.Context, name string, loaders int) (*Load, int) {
 
 	buildir := config.GetVar(config.BUILDIR)
 	os.MkdirAll(buildir, 0755)
@@ -99,6 +99,7 @@ func NewLoad(ctx context.Context, name string, loaders int) *Load {
 	if loaders == 0 {
 		loaders = 2 * runtime.NumCPU()
 	}
+	log.Trace("MaxLoaders is set to %d\n", loaders)
 
 	load := Load{
 		arg:     make([]*runbook.Arg, loaders),
@@ -145,7 +146,7 @@ func NewLoad(ctx context.Context, name string, loaders int) *Load {
 	os.MkdirAll(config.GetVar(config.DLDIR), 0755)
 	os.MkdirAll(config.GetVar(config.IMAGEDIR), 0755)
 	os.MkdirAll(config.GetVar(config.STAGINGDIR), 0755)
-	return &load
+	return &load, loaders
 }
 
 // SetOutput assign stdout & stderr for one load
