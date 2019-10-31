@@ -255,27 +255,29 @@ func (l *Load) Run(name, target string, nodeps, force bool) error {
 
 	defer l.exit()
 
-	if nodeps || force {
+	c, _, isNative, err := l.find(name)
+	if err != nil {
+		return err
+	}
 
-		c, _, isNative, err := l.find(name)
-		if err != nil {
-			return err
-		}
+	rb := c.Runbook()
+	if rb.TaskSet().Has(target) {
+		nodeps = true
+	}
 
-		if force {
-			rb := c.Runbook()
-			t := tempDir(c, isNative)
-			if target != "" {
-				markStagePlayed(target, t, false)
-			} else {
-				for stage := rb.Head(); stage != nil; stage = stage.Next() {
-					markStagePlayed(stage.Name(), t, false)
-				}
+	if force {
+		t := tempDir(c, isNative)
+		if target != "" {
+			markStagePlayed(target, t, false)
+		} else {
+			for stage := rb.Head(); stage != nil; stage = stage.Next() {
+				markStagePlayed(stage.Name(), t, false)
 			}
 		}
-		if nodeps {
-			return l.perform(l.ctx, c, target, true, isNative)
-		}
+	}
+
+	if nodeps {
+		return l.perform(l.ctx, c, target, true, isNative)
 	}
 
 	l.run(l.ctx, name, target, false)
