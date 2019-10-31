@@ -8,6 +8,7 @@ import (
 	"container/list"
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"sync"
 	"sync/atomic"
@@ -151,6 +152,10 @@ func (rb *Runbook) RunTask(ctx context.Context, name string) error {
 func (rb *Runbook) Range(ctx context.Context, name string) error {
 
 	arg, _ := FromContext(ctx)
+	if name != "" && rb.Stage(name) == nil {
+		return fmt.Errorf("%s has no stage %s", arg.Owner, name)
+	}
+
 	log.Trace("Range stages held by %s", arg.Owner)
 	for stage := rb.Head(); stage != nil; stage = stage.Next() {
 		if stage.tasks.Len() > 0 {
