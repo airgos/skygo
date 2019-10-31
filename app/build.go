@@ -22,13 +22,18 @@ type build struct {
 	Force   bool   `flag:"force" help:"force to run"`
 }
 
-func (*build) Name() string      { return "carton" }
-func (*build) UsageLine() string { return "<carton name[@target]>" }
-func (*build) Summary() string {
-	return `build carton
-target is stage name or independent task name
-info command can show stage & task information
-	`
+func (*build) Name() string    { return "carton" }
+func (*build) Summary() string { return "build carton" }
+func (b *build) UsageLine() string {
+	return fmt.Sprintf(`<carton name[@target]>
+
+target should be stage name or independent task name.
+command info show what stages and independent tasks carton has.
+
+example:
+
+$%s carton busybox@fetch
+`, b.name)
 }
 
 func (*build) Help(f *flag.FlagSet) {
