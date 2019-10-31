@@ -49,12 +49,19 @@ func (b *build) Run(ctx context.Context, args ...string) error {
 
 	panes := tmuxPanes(ctx)
 	if num := len(panes); num > 0 {
-		b.Loaders = num
+		if b.Loaders == 0 {
+			b.Loaders = num
+		} else { // cmd line assign Loaders
+			if num < b.Loaders {
+				b.Loaders = num
+			}
+		}
 	}
 
 	log.Trace("MaxLoaders is set to %d\n", b.Loaders)
 	l := load.NewLoad(ctx, b.name, b.Loaders)
-	for i, pane := range panes {
+	for i := 0; i < b.Loaders; i++ {
+		pane := panes[i]
 		if file, err := os.OpenFile(pane, os.O_RDWR, 0766); err == nil {
 			l.SetOutput(i, file, file)
 		} else {
