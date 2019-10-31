@@ -74,6 +74,5 @@ func (app *App) commands() []Application {
 	return []Application{
 		&info{name: app.name},
 		&build{name: app.name},
-		&clean{name: app.name},
 	}
 }

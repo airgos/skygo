@@ -129,6 +129,7 @@ func NewLoad(ctx context.Context, name string, loaders int) *Load {
 	load.ctx, load.cancel = context.WithCancel(ctx)
 	load.exit = func() {
 		os.Remove(lockfile)
+		log.Trace("Delete lock file %s", lockfile)
 	}
 
 	sigs := make(chan os.Signal, 1)
@@ -287,23 +288,6 @@ func (l *Load) Run(name, target string, nodeps, force bool) error {
 	return nil
 }
 
-// Clean invokes carton's method Clean
-func (l *Load) Clean(name string, force bool) error {
-
-	defer l.exit()
-
-	c, _, isNative, err := l.find(name)
-	if err != nil {
-		return err
-	}
-
-	if force {
-		os.RemoveAll(WorkDir(c, isNative))
-		return nil
-	}
-	return l.perform(l.ctx, c, "clean", true, isNative)
-}
-
 func (l *Load) setupArg(carton carton.Builder, arg *runbook.Arg,
 	isNative bool) {
 
@@ -355,6 +339,18 @@ func (l *Load) setupRunbook(c carton.Builder) {
 			return patch(ctx)
 		})
 	}
+
+	tset := rb.TaskSet()
+	tset.Add("cleanall", func(ctx context.Context) error {
+
+		arg, _ := runbook.FromContext(ctx)
+		wd := arg.GetVar("WORKDIR")
+
+		os.RemoveAll(wd)
+		log.Trace("Remove working dir %s", wd)
+		return nil
+	})
+
 	addEventListener(rb)
 	l.loaded.LoadOrStore(name, true)
 }

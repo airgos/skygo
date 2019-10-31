@@ -87,8 +87,8 @@ func cleanTask(task string, arg *runbook.Arg) (bool, interface{}, error) {
 		os.RemoveAll(arg.GetVar("T"))
 
 		// only run clean task if S does exist
-		dir := arg.GetVar("S")
-		if dir == "" {
+		dir, ok := arg.LookupVar("S")
+		if !ok {
 			return true, nil, nil
 		}
 
