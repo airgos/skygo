@@ -10,7 +10,7 @@ import (
 
 // KV represents key-value state
 type KV struct {
-	Name string // name of key-value
+	name string // name of key-value
 
 	// TODO: need lock  or use sync.Map ?
 	vars map[string]interface{}
@@ -27,6 +27,12 @@ type KVSetter interface {
 	SetKv(key string, value interface{})
 }
 
+// Init initialize KV that must be called firstly
+func (kv *KV) Init(name string) {
+	kv.vars = make(map[string]interface{})
+	kv.name = name
+}
+
 // GetVar return value of var key
 func (kv *KV) GetVar(key string) string {
 	if v, ok := kv.Get(key).(string); ok {
@@ -37,24 +43,17 @@ func (kv *KV) GetVar(key string) string {
 
 // GetVar return value of var key
 func (kv *KV) Get(key string) interface{} {
-	if kv.vars == nil {
-		return nil
-	}
 	v, ok := kv.vars[key]
 	if !ok {
-		log.Warning("Key %s is not found in %s", key, kv.Name)
+		log.Warning("Key %s is not found in %s", key, kv.name)
 	}
 	return v
 }
 
 // Setreturn value of var key
 func (kv *KV) SetKv(key string, value interface{}) {
-	if kv.vars == nil {
-		kv.vars = make(map[string]interface{})
-	}
-
 	if _, ok := kv.vars[key]; ok {
-		log.Warning("To overwrite key %s held by %s", key, kv.Name)
+		log.Warning("To overwrite key %s held by %s", key, kv.name)
 	}
 	kv.vars[key] = value
 }
@@ -75,10 +74,6 @@ func (kv *KV) LookupVar(key string) (string, bool) {
 // If the key is present, value is returned and the boolean is true.
 // Otherwise the returned value will be nill and the boolean will be false.
 func (kv *KV) Lookup(key string) (interface{}, bool) {
-
-	if kv.vars == nil {
-		return nil, false
-	}
 
 	value, ok := kv.vars[key]
 	return value, ok

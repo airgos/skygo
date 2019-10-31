@@ -100,8 +100,8 @@ func (c *Carton) Init(file string, arg Modifier, modify func(arg Modifier)) {
 		c.filespath = []string{}
 
 		c.cartons = append(c.cartons, c.name)
+		c.KV.Init(c.name)
 		c.SetKv("CN", c.name) //CN: carton name
-		c.KV.Name = c.name
 
 		modify(arg)
 	})
