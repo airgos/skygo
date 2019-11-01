@@ -336,10 +336,10 @@ type Arg struct {
 	m sync.Mutex
 }
 
-// visitVars range external and internal key-value data
-func (arg *Arg) visitVars(f func(key, value string)) {
+// Range iterates external and internal key-value data
+func (arg *Arg) Range(f func(key, value string)) {
 	arg.Kv.Range(f)
-	arg.Range(f)
+	arg.KV.Range(f)
 }
 
 // LookupVar retrieves the value of the variable named by the key.

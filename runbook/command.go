@@ -33,7 +33,7 @@ func NewCommand(ctx context.Context, name string, args ...string) *Command {
 	}
 
 	cmd.Env = os.Environ() // inherits OS global env, like HTTP_PROXY
-	arg.visitVars(func(key, value string) {
+	arg.Range(func(key, value string) {
 		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", key, value))
 	})
 	return &Command{
