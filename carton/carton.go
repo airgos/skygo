@@ -285,9 +285,9 @@ func (c *Carton) String() string {
 
 	// where come from
 	if len(c.file) > 0 {
-		fmt.Fprintf(&b, "From: %s\n", c.file[0])
+		fmt.Fprintf(&b, "   From: %s\n", c.file[0])
 		for _, file := range c.file[1:] {
-			fmt.Fprintf(&b, "      %s\n", file)
+			fmt.Fprintf(&b, "         %s\n", file)
 		}
 	}
 

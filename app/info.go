@@ -41,13 +41,13 @@ func (i *info) Run(ctx context.Context, args ...string) error {
 	return nil
 }
 
-func show(h carton.Builder, isNative bool) {
+func show(c carton.Builder, isNative bool) {
 
 	// TODO:
 	// indicates whether it is installed
 	// highlight selected version
-	fmt.Printf("%s", h.Provider())
-	versions := h.Resource().Versions()
+	fmt.Printf("%s", c.Provider())
+	versions := c.Resource().Versions()
 	if len(versions) > 0 {
 		fmt.Printf(": %s", versions[0])
 		for _, ver := range versions[1:] {
@@ -55,16 +55,16 @@ func show(h carton.Builder, isNative bool) {
 		}
 	}
 	fmt.Println()
-	fmt.Println(h)
+	fmt.Println(c)
 
 	// print dependencies
-	builds := h.BuildDepends()
-	depends := h.Depends()
+	builds := c.BuildDepends()
+	depends := c.Depends()
 	if len(builds) > 0 || len(depends) > 0 {
 		fmt.Println("==> Dependencies")
 		if len(builds) > 0 {
 
-			fmt.Printf("Build: %s", builds[0])
+			fmt.Printf("   Build: %s", builds[0])
 			for _, d := range builds[1:] {
 				fmt.Printf(", %s", d)
 			}
@@ -79,21 +79,22 @@ func show(h carton.Builder, isNative bool) {
 			}
 			fmt.Println()
 		}
+		fmt.Println()
 	}
 
 	fmt.Println("==> Path")
-	wd := load.WorkDir(h, isNative)
-	fmt.Println("WORKDIR:", wd)
-	fmt.Println("SRCDIR: ", h.SrcDir(wd))
+	wd := load.WorkDir(c, isNative)
+	fmt.Println("  WORKDIR:", wd)
+	fmt.Println("   SRCDIR:", c.SrcDir(wd))
 
-	filespath := h.FilesPath()
+	filespath := c.FilesPath()
 	fmt.Println("FilesPath:", filespath[0])
 	for _, p := range filespath[1:] {
-		fmt.Println("     ", p)
+		fmt.Println("          ", p)
 	}
 
-	fmt.Println("==> Runbook")
-	stage, tasknum, taskname := h.Runbook().RunbookInfo()
+	fmt.Printf("\n==> Runbook")
+	stage, tasknum, taskname := c.Runbook().RunbookInfo()
 	fmt.Printf("Stage: %s[%d]", stage[0], tasknum[0])
 	for i := 1; i < len(stage); i++ {
 		fmt.Printf(" --> %s[%d]", stage[i], tasknum[i])
