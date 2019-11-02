@@ -74,9 +74,15 @@ func (rb *Runbook) String() string {
 	// output stage information
 	if head := rb.Head(); head != nil {
 
-		fmt.Fprintf(&s, "\n%13s: %s[%d]", "Stage Flow", head.name, head.tasks.Len())
+		disabled := func(stage *Stage) string {
+			if stage.disabled {
+				return "disabled, "
+			}
+			return ""
+		}
+		fmt.Fprintf(&s, "\n%13s: %s[%s%d]", "Stage Flow", head.name, disabled(head), head.tasks.Len())
 		for stage := head.Next(); stage != nil; stage = stage.Next() {
-			fmt.Fprintf(&s, " >>> %s[%d]", stage.name, stage.tasks.Len())
+			fmt.Fprintf(&s, " >>> %s[%s%d]", stage.name, disabled(stage), stage.tasks.Len())
 		}
 		fmt.Fprintf(&s, "\nStage Summary:\n")
 
