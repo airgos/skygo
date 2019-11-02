@@ -344,6 +344,8 @@ func (l *Load) setupRunbook(c carton.Builder) {
 	tset := rb.TaskSet()
 	tset.Add("cleanall", cleanall,
 		"Remove all intermediate stuff")
+	tset.Add("printenv", printenv,
+		"Show global and per carton context variables")
 
 	addEventListener(rb)
 	l.loaded.LoadOrStore(name, true)

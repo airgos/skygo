@@ -6,6 +6,7 @@ package load
 
 import (
 	"context"
+	"fmt"
 	"os"
 
 	"merge/log"
@@ -19,5 +20,15 @@ func cleanall(ctx context.Context) error {
 
 	os.RemoveAll(wd)
 	log.Trace("Remove working dir %s", wd)
+	return nil
+}
+
+func printenv(ctx context.Context) error {
+
+	arg, _ := runbook.FromContext(ctx)
+	fmt.Println()
+	arg.Range(func(k, v string) {
+		fmt.Printf("%12s:\t%s\n", k, v)
+	})
 	return nil
 }
