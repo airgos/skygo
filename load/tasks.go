@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 
+	"merge/carton"
 	"merge/log"
 	"merge/runbook"
 )
@@ -31,4 +32,24 @@ func printenv(ctx context.Context) error {
 		fmt.Printf("%12s:\t%s\n", k, v)
 	})
 	return nil
+}
+
+func cleanstate(ctx context.Context) error {
+
+	arg, _ := runbook.FromContext(ctx)
+	c := arg.Private.(carton.Builder)
+	rb := c.Runbook()
+	cleanstate1(rb, "", arg.GetVar("T"))
+	return nil
+}
+
+func cleanstate1(rb *runbook.Runbook, target, tempDir string) {
+
+	if target != "" {
+		markStagePlayed(target, tempDir, false)
+	} else {
+		for stage := rb.Head(); stage != nil; stage = stage.Next() {
+			markStagePlayed(stage.Name(), tempDir, false)
+		}
+	}
 }

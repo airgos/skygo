@@ -94,7 +94,5 @@ func markStagePlayed(stage string, tempDir string, played bool) {
 		}
 		return
 	}
-	if err := os.Remove(done); err != nil {
-		log.Error("Failed to mark stage %s to be executed", stage)
-	}
+	os.Remove(done)
 }

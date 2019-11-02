@@ -269,13 +269,7 @@ func (l *Load) Run(name, target string, nodeps, force bool) error {
 
 	if force {
 		t := tempDir(c, isNative)
-		if target != "" {
-			markStagePlayed(target, t, false)
-		} else {
-			for stage := rb.Head(); stage != nil; stage = stage.Next() {
-				markStagePlayed(stage.Name(), t, false)
-			}
-		}
+		cleanstate1(rb, target, t)
 	}
 
 	if nodeps {
@@ -346,6 +340,8 @@ func (l *Load) setupRunbook(c carton.Builder) {
 		"Remove all intermediate stuff")
 	tset.Add("printenv", printenv,
 		"Show global and per carton context variables")
+	tset.Add("cleanstate", cleanstate,
+		"Clean state cache of all stages")
 
 	addEventListener(rb)
 	l.loaded.LoadOrStore(name, true)
