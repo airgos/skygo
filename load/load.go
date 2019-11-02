@@ -342,15 +342,8 @@ func (l *Load) setupRunbook(c carton.Builder) {
 	}
 
 	tset := rb.TaskSet()
-	tset.Add("cleanall", func(ctx context.Context) error {
-
-		arg, _ := runbook.FromContext(ctx)
-		wd := arg.GetVar("WORKDIR")
-
-		os.RemoveAll(wd)
-		log.Trace("Remove working dir %s", wd)
-		return nil
-	})
+	tset.Add("cleanall", cleanall,
+		"Remove all intermediate stuff")
 
 	addEventListener(rb)
 	l.loaded.LoadOrStore(name, true)
