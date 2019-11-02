@@ -68,7 +68,7 @@ func NewCarton(name string, m func(c *Carton)) {
 	c.Init(file, c, func(arg Modifier) {
 
 		rb := runbook.NewRunbook()
-		fetch := rb.PushFront(FETCH)
+		fetch := rb.PushFront(FETCH).Summary("Fetchs the source code and extract")
 		fetch.AddTask(0, func(ctx context.Context) error {
 			return c.fetch.Download(ctx,
 				// reset subsequent stages
@@ -80,8 +80,10 @@ func NewCarton(name string, m func(c *Carton)) {
 				})
 		})
 
-		fetch.InsertAfter(PATCH).
-			InsertAfter(PREPARE).InsertAfter(BUILD).InsertAfter(INSTALL)
+		fetch.InsertAfter(PATCH).Summary("Locates patch files and applies them to the source code").
+			InsertAfter(PREPARE).Summary("Prepares something for build").
+			InsertAfter(BUILD).Summary("Compiles the source in the compilation directory").
+			InsertAfter(INSTALL).Summary("Install files from the compilation directory")
 		c.runbook = rb
 
 		m(c)

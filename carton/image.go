@@ -28,9 +28,9 @@ func NewImage(name string, m func(i *Image)) {
 	i.Init(file, i, func(arg Modifier) {
 
 		rb := runbook.NewRunbook()
-		rb.PushFront(PREPARE).
-			InsertAfter(BUILD).
-			InsertAfter(INSTALL)
+		rb.PushFront(PREPARE).Summary("Prepares something for build").
+			InsertAfter(BUILD).Summary("Make image").
+			InsertAfter(INSTALL).Summary("Copy images to deploy directory")
 		i.SetRunbook(rb)
 		m(i)
 	})
