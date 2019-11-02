@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strings"
 	"sync"
 	"sync/atomic"
 
@@ -40,6 +41,7 @@ type Runbook struct {
 // task with the lowest weight is executed first.
 type Stage struct {
 	name string
+	help string
 
 	tasks *TaskSet
 
@@ -202,7 +204,7 @@ func newStage(name string) *Stage {
 	stage.listeners.inout.Init()
 	stage.listeners.reset.Init()
 
-	stage.tasks.routine = name
+	stage.tasks.owner = name
 	return &stage
 }
 
@@ -242,6 +244,12 @@ func (s *Stage) InsertBefore(name string) *Stage {
 	return n
 }
 
+// Summary sets help message
+func (s *Stage) Summary(summary string) *Stage {
+	s.help = summary
+	return s
+}
+
 // Next stage
 func (s *Stage) Next() *Stage {
 
@@ -259,7 +267,7 @@ func (s *Stage) AddTask(weight int, task interface{}) (*Stage, error) {
 		return nil, ErrNilStage
 	}
 
-	_, err := s.tasks.Add(weight, task)
+	err := s.tasks.Add(weight, task, "")
 	return s, err
 }
 

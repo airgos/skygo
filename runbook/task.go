@@ -18,17 +18,24 @@ import (
 	"merge/log"
 )
 
-// TaskCmd represent command name with enter routine
+// TaskCmd represent shell script
 type TaskCmd struct {
-	name    string // file name, script string
-	routine string //optional
+	script  string // script file name or script string
+	routine string // entry routine of script
+	summary string // description summary
+}
+
+// taskGo represent golang func task
+type taskGo struct {
+	f       func(ctx context.Context) error
+	summary string // description summary
 }
 
 // TaskSet represent a collection of task
-// It supports two kind of task: golang func or TaskCmd
+// It supports two kind of task: taskGo or TaskCmd
 type TaskSet struct {
-	set     map[interface{}]interface{}
-	routine string
+	set   map[interface{}]interface{}
+	owner string //optional. who own this TaskSet
 }
 
 // newTaskSet create taskset
@@ -50,25 +57,32 @@ func (t *TaskSet) Has(name string) bool {
 }
 
 // Add task. Return ErrTaskAdded if key was set
-// TODO: return TaskCmd ?
-func (t *TaskSet) Add(key interface{}, task interface{}) (*TaskSet, error) {
+func (t *TaskSet) Add(key interface{}, task interface{}, summary string) error {
 
 	v := task
 	if _, ok := t.set[key]; ok {
-
-		log.Error("Task(%s) added: %v\n", t.routine, task)
-		return t, ErrTaskAdded
+		log.Error("Task %v had been owned by %s\n", key, t.owner)
+		return ErrTaskAdded
 	}
 
-	if name, ok1 := task.(string); ok1 {
-		if routine, ok2 := key.(string); ok2 {
-			v = TaskCmd{routine: routine, name: name}
-		} else {
-			v = TaskCmd{routine: t.routine, name: name}
+	switch kind := task.(type) {
+
+	case string:
+		routine := t.owner
+		if name, ok := key.(string); ok {
+			routine = name
 		}
+		v = TaskCmd{routine: routine, script: kind, summary: summary}
+
+	case func(context.Context) error:
+		v = taskGo{f: kind, summary: summary}
+
+	default:
+		return ErrUnknownTaskType
 	}
+
 	t.set[key] = v
-	return t, nil
+	return nil
 }
 
 // Del delete task
@@ -124,8 +138,8 @@ func (t *TaskSet) runtask(ctx context.Context, task interface{}) (e error) {
 	default:
 		// fmt.Printf("%T", kind)
 		e = ErrUnknownTaskType
-	case func(context.Context) error:
-		e = kind(ctx)
+	case taskGo:
+		e = kind.f(ctx)
 	case TaskCmd:
 		e = kind.Run(ctx)
 	}
@@ -148,7 +162,7 @@ func (tc *TaskCmd) Run(ctx context.Context) error {
 	exp := regexp.MustCompile(fmt.Sprintf(` *%s *\( *\)`, tc.routine))
 
 	for _, d := range arg.FilesPath {
-		path := filepath.Join(d, tc.name)
+		path := filepath.Join(d, tc.script)
 		if info, err := os.Stat(path); err == nil &&
 			info.Mode().IsRegular() {
 
@@ -162,10 +176,10 @@ func (tc *TaskCmd) Run(ctx context.Context) error {
 		}
 	}
 	if r == nil {
-		if !exp.MatchString(tc.name) {
+		if !exp.MatchString(tc.script) {
 			routine = ""
 		}
-		r = strings.NewReader(tc.name)
+		r = strings.NewReader(tc.script)
 	}
 
 	command := NewCommand(ctx, "/bin/bash")
