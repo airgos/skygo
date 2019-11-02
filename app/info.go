@@ -94,15 +94,5 @@ func show(c carton.Builder, isNative bool) {
 	}
 
 	fmt.Printf("\n==> Runbook")
-	stage, tasknum, taskname := c.Runbook().RunbookInfo()
-	fmt.Printf("Stage: %s[%d]", stage[0], tasknum[0])
-	for i := 1; i < len(stage); i++ {
-		fmt.Printf(" --> %s[%d]", stage[i], tasknum[i])
-	}
-	if len(taskname) > 0 {
-		fmt.Printf("\nTasks: %s", taskname[0])
-		for _, n := range taskname[1:] {
-			fmt.Printf(" %s", n)
-		}
-	}
+	fmt.Println(c.Runbook())
 }

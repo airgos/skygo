@@ -66,22 +66,38 @@ func NewRunbook() *Runbook {
 	return this
 }
 
-// RunbookInfo give stage slice with the number of task, independent task names
-func (rb *Runbook) RunbookInfo() ([]string, []int, []string) {
+// String output information stages and independent tasks
+func (rb *Runbook) String() string {
 
-	num := rb.head.Len()
-	stages := make([]string, 0, num)
-	tasknum := make([]int, 0, num)
+	var s strings.Builder
 
-	for stage := rb.Head(); stage != nil; stage = stage.Next() {
-		stages = append(stages, stage.name)
-		tasknum = append(tasknum, stage.tasks.Len())
+	// output stage information
+	if head := rb.Head(); head != nil {
+
+		fmt.Fprintf(&s, "\n%13s: %s[%d]", "Stage Flow", head.name, head.tasks.Len())
+		for stage := head.Next(); stage != nil; stage = stage.Next() {
+			fmt.Fprintf(&s, " >>> %s[%d]", stage.name, stage.tasks.Len())
+		}
+		fmt.Fprintf(&s, "\nStage Summary:\n")
+
+		for stage := head; stage != nil; stage = stage.Next() {
+			fmt.Fprintf(&s, "%13s: %s\n", stage.name, stage.help)
+		}
 	}
-	taskname := []string{}
-	for n := range rb.taskset.set {
-		taskname = append(taskname, n.(string))
+
+	fmt.Fprintf(&s, "\nIndependent Tasks\n")
+	for key := range rb.taskset.set {
+		if name, ok := key.(string); ok {
+			switch task := rb.taskset.set[key].(type) {
+			case taskGo:
+				fmt.Fprintf(&s, "%10s: %s\n", name, task.summary)
+			case TaskCmd:
+				fmt.Fprintf(&s, "%10s: %s\n", name, task.summary)
+			}
+		}
+
 	}
-	return stages, tasknum, taskname
+	return s.String()
 }
 
 // PushBack new a stage, and push at the end
