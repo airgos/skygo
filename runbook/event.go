@@ -38,9 +38,9 @@ func (l *listeners) PushInOut(
 	l.inout.PushBack(&pair)
 }
 
-// RangeIn interates to call listener enter
+// rangeIn interates to call listener enter
 // If any listener enter returns handled or error, RangeIn stops the iteration.
-func (l *listeners) RangeIn(name string, arg *Arg) (handled bool, err error) {
+func (l *listeners) rangeIn(name string, arg *Arg) (handled bool, err error) {
 
 	for e := l.inout.Front(); e != nil; e = e.Next() {
 		listener := e.Value.(*inout)
@@ -56,9 +56,9 @@ func (l *listeners) RangeIn(name string, arg *Arg) (handled bool, err error) {
 	return
 }
 
-// RangeOut interates to call listener exit
+// rangeOut interates to call listener exit
 // If any listener exit returns error, RangeIn stops the iteration.
-func (l *listeners) RangeOut(name string, arg *Arg) error {
+func (l *listeners) rangeOut(name string, arg *Arg) error {
 
 	for e := l.inout.Front(); e != nil; e = e.Next() {
 		listener := e.Value.(*inout)
@@ -78,8 +78,8 @@ func (l *listeners) PushReset(reset func(name string, arg *Arg) error) {
 	l.reset.PushBack(reset)
 }
 
-// RangeReset interates to call listener reset
-func (l *listeners) RangeReset(name string, arg *Arg) error {
+// rangeReset interates to call listener reset
+func (l *listeners) rangeReset(name string, arg *Arg) error {
 
 	for e := l.reset.Front(); e != nil; e = e.Next() {
 		reset := e.Value.(func(name string, arg *Arg) error)

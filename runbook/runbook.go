@@ -82,7 +82,7 @@ func (rb *Runbook) String() string {
 		}
 		fmt.Fprintf(&s, "\n%13s: %s[%s%d]", "Stage Flow", head.name, disabled(head), head.tasks.Len())
 		for stage := head.Next(); stage != nil; stage = stage.Next() {
-			fmt.Fprintf(&s, " >>> %s[%s%d]", stage.name, disabled(stage), stage.tasks.Len())
+			fmt.Fprintf(&s, " ->> %s[%s%d]", stage.name, disabled(stage), stage.tasks.Len())
 		}
 		fmt.Fprintf(&s, "\nStage Summary:\n")
 
@@ -97,7 +97,7 @@ func (rb *Runbook) String() string {
 			switch task := rb.taskset.set[key].(type) {
 			case taskGo:
 				fmt.Fprintf(&s, "%10s: %s\n", name, task.summary)
-			case TaskCmd:
+			case taskCmd:
 				fmt.Fprintf(&s, "%10s: %s\n", name, task.summary)
 			}
 		}
@@ -160,14 +160,14 @@ func (rb *Runbook) RunTask(ctx context.Context, name string) error {
 
 	log.Trace("Run independent task: %s", name)
 	arg, _ := FromContext(ctx)
-	if handled, err := rb.RangeIn(name, arg); handled || err != nil {
+	if handled, err := rb.rangeIn(name, arg); handled || err != nil {
 		return err
 	}
 
-	if err := rb.taskset.Run(ctx, name); err != nil {
+	if err := rb.taskset.run(ctx, name); err != nil {
 		return err
 	}
-	return rb.RangeOut(name, arg)
+	return rb.rangeOut(name, arg)
 }
 
 // Range iterates all stages and execute Play in the runbook
@@ -307,7 +307,7 @@ func (s *Stage) DelTask(weight int) *Stage {
 func (s *Stage) Reset(ctx context.Context) {
 
 	arg, _ := FromContext(ctx)
-	s.RangeReset(s.name, arg)
+	s.rangeReset(s.name, arg)
 
 	s.m.Lock()
 	defer s.m.Unlock()
@@ -331,14 +331,14 @@ func (s *Stage) Play(ctx context.Context) error {
 		defer atomic.StoreUint32(&s.executed, 1)
 
 		arg, _ := FromContext(ctx)
-		if handled, err := s.RangeIn(s.name, arg); handled || err != nil {
+		if handled, err := s.rangeIn(s.name, arg); handled || err != nil {
 			return err
 		}
 
-		if err := s.tasks.Play(ctx); err != nil {
+		if err := s.tasks.play(ctx); err != nil {
 			return err
 		}
-		return s.RangeOut(s.name, arg)
+		return s.rangeOut(s.name, arg)
 	}
 	return nil
 }

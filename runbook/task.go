@@ -18,8 +18,8 @@ import (
 	"merge/log"
 )
 
-// TaskCmd represent shell script
-type TaskCmd struct {
+// taskCmd represent shell script
+type taskCmd struct {
 	script  string // script file name or script string
 	routine string // entry routine of script
 	summary string // description summary
@@ -32,7 +32,7 @@ type taskGo struct {
 }
 
 // TaskSet represent a collection of task
-// It supports two kind of task: taskGo or TaskCmd
+// It supports two kind of task: taskGo or taskCmd
 type TaskSet struct {
 	set   map[interface{}]interface{}
 	owner string //optional. who own this TaskSet
@@ -72,7 +72,7 @@ func (t *TaskSet) Add(key interface{}, task interface{}, summary string) error {
 		if name, ok := key.(string); ok {
 			routine = name
 		}
-		v = TaskCmd{routine: routine, script: kind, summary: summary}
+		v = taskCmd{routine: routine, script: kind, summary: summary}
 
 	case func(context.Context) error:
 		v = taskGo{f: kind, summary: summary}
@@ -90,8 +90,8 @@ func (t *TaskSet) Del(key interface{}) {
 	delete(t.set, key)
 }
 
-// Run specific task
-func (t *TaskSet) Run(ctx context.Context, key string) error {
+// run specific task
+func (t *TaskSet) run(ctx context.Context, key string) error {
 
 	if task, ok := t.set[key]; ok {
 		if err := t.runtask(ctx, task); err != nil {
@@ -103,8 +103,8 @@ func (t *TaskSet) Run(ctx context.Context, key string) error {
 	return nil
 }
 
-// Play run all task by order of Sort.Ints(weight)
-func (t *TaskSet) Play(ctx context.Context) error {
+// play run all task by order of Sort.Ints(weight)
+func (t *TaskSet) play(ctx context.Context) error {
 
 	// sort weight
 	weight := make([]int, 0, len(t.set))
@@ -140,16 +140,16 @@ func (t *TaskSet) runtask(ctx context.Context, task interface{}) (e error) {
 		e = ErrUnknownTaskType
 	case taskGo:
 		e = kind.f(ctx)
-	case TaskCmd:
-		e = kind.Run(ctx)
+	case taskCmd:
+		e = kind.run(ctx)
 	}
 	return
 }
 
-// Run the TaskCmd, before run, it does:
+// run the taskCmd, before run, it does:
 // Locate tc.name under runtime GetFilePath(), if found, it's script file, else it's script string
 // If script have function @routine, append routine name
-func (tc *TaskCmd) Run(ctx context.Context) error {
+func (tc *taskCmd) run(ctx context.Context) error {
 
 	var r io.Reader
 	routine := tc.routine
