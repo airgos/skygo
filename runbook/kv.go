@@ -33,6 +33,12 @@ func (kv *KV) Init(name string) {
 	kv.name = name
 }
 
+// Init2 initialize KV with external kv store
+func (kv *KV) Init2(name string, vars map[string]interface{}) {
+	kv.vars = vars
+	kv.name = name
+}
+
 // GetVar return value of var key
 func (kv *KV) GetVar(key string) string {
 	if v, ok := kv.Get(key).(string); ok {
