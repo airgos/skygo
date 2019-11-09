@@ -43,7 +43,7 @@ type Stage struct {
 	name string
 	help string
 
-	tasks *TaskSet
+	taskset *TaskSet
 
 	e       *list.Element
 	runbook *Runbook
@@ -80,9 +80,9 @@ func (rb *Runbook) String() string {
 			}
 			return ""
 		}
-		fmt.Fprintf(&s, "\n%13s: %s[%s%d]", "Stage Flow", head.name, disabled(head), head.tasks.Len())
+		fmt.Fprintf(&s, "\n%13s: %s[%s%d]", "Stage Flow", head.name, disabled(head), head.taskset.Len())
 		for stage := head.Next(); stage != nil; stage = stage.Next() {
-			fmt.Fprintf(&s, " ->> %s[%s%d]", stage.name, disabled(stage), stage.tasks.Len())
+			fmt.Fprintf(&s, " ->> %s[%s%d]", stage.name, disabled(stage), stage.taskset.Len())
 		}
 		fmt.Fprintf(&s, "\nStage Summary:\n")
 
@@ -196,7 +196,7 @@ func (rb *Runbook) Range(ctx context.Context, name string) error {
 
 	log.Trace("Range stages held by %s", arg.Owner)
 	for stage := rb.Head(); stage != nil; stage = stage.Next() {
-		if stage.tasks.Len() > 0 {
+		if stage.taskset.Len() > 0 {
 
 			err := stage.Play(ctx)
 			if err != nil {
@@ -217,7 +217,7 @@ func (rb *Runbook) Play(ctx context.Context, name string) error {
 	arg, _ := FromContext(ctx)
 
 	if s := rb.Stage(name); s != nil {
-		if num := s.tasks.Len(); num > 0 {
+		if num := s.taskset.Len(); num > 0 {
 			log.Trace("Play stage %s[tasks=%d] held by %s",
 				name, num, arg.Owner)
 			return s.Play(ctx)
@@ -232,15 +232,15 @@ func (rb *Runbook) Play(ctx context.Context, name string) error {
 func newStage(name string) *Stage {
 
 	stage := Stage{
-		name:  name,
-		tasks: newTaskSet(),
+		name:    name,
+		taskset: newTaskSet(),
 	}
 
 	// init event listeners
 	stage.listeners.inout.Init()
 	stage.listeners.reset.Init()
 
-	stage.tasks.owner = name
+	stage.taskset.owner = name
 	return &stage
 }
 
@@ -288,7 +288,7 @@ func (s *Stage) Summary(summary string) *Stage {
 
 // Dir specifies the working directory of the stage explicitly
 func (s *Stage) Dir(dir string) *Stage {
-	s.tasks.Dir = dir
+	s.taskset.Dir = dir
 	return s
 }
 
@@ -309,7 +309,7 @@ func (s *Stage) AddTask(weight int, task interface{}) (*Stage, error) {
 		return nil, ErrNilStage
 	}
 
-	err := s.tasks.Add(weight, task, "")
+	err := s.taskset.Add(weight, task, "")
 	return s, err
 }
 
@@ -319,7 +319,7 @@ func (s *Stage) DelTask(weight int) *Stage {
 	if s == nil {
 		return nil
 	}
-	s.tasks.Del(weight)
+	s.taskset.Del(weight)
 	return s
 }
 
@@ -359,13 +359,13 @@ func (s *Stage) Play(ctx context.Context) error {
 		}
 
 		// if taskset's dir is empty, try to use S
-		if s.tasks.Dir == "" {
+		if s.taskset.Dir == "" {
 			if dir, ok := arg.LookupVar("S"); ok {
-				s.tasks.Dir = dir
+				s.taskset.Dir = dir
 			}
 		}
 
-		if err := s.tasks.play(ctx); err != nil {
+		if err := s.taskset.play(ctx); err != nil {
 			return err
 		}
 		return s.rangeOut(s.name, arg)
