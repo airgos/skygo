@@ -14,7 +14,7 @@ import (
 	"merge/runbook"
 )
 
-func cleanall(ctx context.Context) error {
+func cleanall(ctx context.Context, dir string) error {
 
 	arg, _ := runbook.FromContext(ctx)
 	wd := arg.GetVar("WORKDIR")
@@ -24,7 +24,7 @@ func cleanall(ctx context.Context) error {
 	return nil
 }
 
-func printenv(ctx context.Context) error {
+func printenv(ctx context.Context, dir string) error {
 
 	arg, _ := runbook.FromContext(ctx)
 	fmt.Println()
@@ -34,7 +34,7 @@ func printenv(ctx context.Context) error {
 	return nil
 }
 
-func cleanstate(ctx context.Context) error {
+func cleanstate(ctx context.Context, dir string) error {
 
 	arg, _ := runbook.FromContext(ctx)
 	c := arg.Private.(carton.Builder)

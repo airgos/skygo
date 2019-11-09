@@ -330,8 +330,8 @@ func (l *Load) setupRunbook(c carton.Builder) {
 	}
 
 	if s := rb.Stage(carton.PATCH); s != nil {
-		s.AddTask(0, func(ctx context.Context) error {
-			return patch(ctx)
+		s.AddTask(0, func(ctx context.Context, dir string) error {
+			return patch(ctx, dir)
 		})
 	}
 

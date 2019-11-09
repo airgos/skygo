@@ -69,7 +69,7 @@ func NewCarton(name string, m func(c *Carton)) {
 
 		rb := runbook.NewRunbook()
 		fetch := rb.PushFront(FETCH).Summary("Fetchs the source code and extract")
-		fetch.AddTask(0, func(ctx context.Context) error {
+		fetch.AddTask(0, func(ctx context.Context, dir string) error {
 			return c.fetch.Download(ctx,
 				// reset subsequent stages
 				func(ctx context.Context) {

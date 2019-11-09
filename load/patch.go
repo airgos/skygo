@@ -35,7 +35,7 @@ git apply $PATCHFILE && {
 `
 
 // patch search patch/diff files under WorkPath, sort, then apply
-func patch(ctx context.Context) error {
+func patch(ctx context.Context, dir string) error {
 
 	arg, _ := runbook.FromContext(ctx)
 
@@ -58,6 +58,7 @@ func patch(ctx context.Context) error {
 
 				log.Trace("To apply patch %s", fpath)
 				command := runbook.NewCommand(ctx, "/bin/bash", "-c", patchcmd)
+				command.Cmd.Dir = dir
 
 				patch := filepath.Join(arg.GetVar("WORKDIR"), fpath)
 				command.Cmd.Env = append(command.Cmd.Env, fmt.Sprintf("PATCHFILE=%s\n", patch))
