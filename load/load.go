@@ -32,7 +32,8 @@ type Load struct {
 	loaders int // the number of loaders
 	pool    *xsync.Pool
 
-	vars map[string]string //global key-value
+	// vars       map[string]string //global key-value
+	runbook.KV //global key-value
 
 	arg  []*runbook.Arg
 	bufs []*bytes.Buffer
@@ -105,15 +106,16 @@ func NewLoad(ctx context.Context, name string, loaders int) (*Load, int) {
 		arg:     make([]*runbook.Arg, loaders),
 		bufs:    make([]*bytes.Buffer, loaders),
 		loaders: loaders,
-		vars: map[string]string{
-			"TIMEOUT": "1800", // unit is second, default is 30min
-
-			"DLDIR":      config.GetVar(config.DLDIR),
-			"TOPDIR":     config.GetVar(config.TOPDIR),
-			"IMAGEDIR":   config.GetVar(config.IMAGEDIR),
-			"STAGINGDIR": config.GetVar(config.STAGINGDIR),
-		},
 	}
+
+	load.KV.Init2("loader", map[string]interface{}{
+		"TIMEOUT": "1800", // unit is second, default is 30min
+
+		"DLDIR":      config.GetVar(config.DLDIR),
+		"TOPDIR":     config.GetVar(config.TOPDIR),
+		"IMAGEDIR":   config.GetVar(config.IMAGEDIR),
+		"STAGINGDIR": config.GetVar(config.STAGINGDIR),
+	})
 
 	load.pool = xsync.NewPool(loaders, func(i int) interface{} {
 		x := pool{
@@ -294,10 +296,8 @@ func (l *Load) setupArg(carton carton.Builder, arg *runbook.Arg,
 
 	wd := WorkDir(carton, isNative)
 
-	// export global key-value hold by Load
-	for k, v := range l.vars {
-		arg.SetKv(k, v)
-	}
+	// export global key-value to each carton's context
+	l.Range(func(k, v string) { arg.SetKv(k, v) })
 
 	// key-value for each carton's context
 	for k, v := range map[string]string{
