@@ -158,13 +158,17 @@ func (rb *Runbook) TaskSet() *TaskSet {
 // RunTask play one task in dependent taskset
 func (rb *Runbook) RunTask(ctx context.Context, name string) error {
 
+	if !rb.taskset.Has(name) {
+		return fmt.Errorf("Runbook has no independent task %s", name)
+	}
+
 	log.Trace("Run independent task: %s", name)
 	arg, _ := FromContext(ctx)
 	if handled, err := rb.rangeIn(name, arg); handled || err != nil {
 		return err
 	}
 
-	if err := rb.taskset.run(ctx, name); err != nil {
+	if err := rb.taskset.runByKey(ctx, name); err != nil {
 		return err
 	}
 	return rb.rangeOut(name, arg)

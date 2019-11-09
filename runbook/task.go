@@ -90,20 +90,7 @@ func (t *TaskSet) Del(key interface{}) {
 	delete(t.set, key)
 }
 
-// run specific task
-func (t *TaskSet) run(ctx context.Context, key string) error {
-
-	if task, ok := t.set[key]; ok {
-		if err := t.runtask(ctx, task); err != nil {
-			return err
-		}
-	} else {
-		return fmt.Errorf("Unknown task %s", key)
-	}
-	return nil
-}
-
-// play run all task by order of Sort.Ints(weight)
+// play run all tasks by order of Sort.Ints(weight)
 func (t *TaskSet) play(ctx context.Context) error {
 
 	// sort weight
@@ -144,6 +131,10 @@ func (t *TaskSet) runtask(ctx context.Context, task interface{}) (e error) {
 		e = kind.run(ctx)
 	}
 	return
+}
+
+func (t *TaskSet) runByKey(ctx context.Context, key interface{}) (e error) {
+	return t.runtask(ctx, t.set[key])
 }
 
 // run the taskCmd, before run, it does:
