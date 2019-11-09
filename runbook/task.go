@@ -27,7 +27,7 @@ type taskCmd struct {
 
 // taskGo represent golang func task
 type taskGo struct {
-	f       func(ctx context.Context) error
+	f       func(ctx context.Context, dir string) error
 	summary string // description summary
 }
 
@@ -36,6 +36,7 @@ type taskGo struct {
 type TaskSet struct {
 	set   map[interface{}]interface{}
 	owner string //optional. who own this TaskSet
+	Dir   string //optional. working directory
 }
 
 // newTaskSet create taskset
@@ -74,7 +75,7 @@ func (t *TaskSet) Add(key interface{}, task interface{}, summary string) error {
 		}
 		v = taskCmd{routine: routine, script: kind, summary: summary}
 
-	case func(context.Context) error:
+	case func(context.Context, string) error:
 		v = taskGo{f: kind, summary: summary}
 
 	default:
@@ -126,9 +127,9 @@ func (t *TaskSet) runtask(ctx context.Context, task interface{}) (e error) {
 		// fmt.Printf("%T", kind)
 		e = ErrUnknownTaskType
 	case taskGo:
-		e = kind.f(ctx)
+		e = kind.f(ctx, t.Dir)
 	case taskCmd:
-		e = kind.run(ctx)
+		e = kind.run(ctx, t.Dir)
 	}
 	return
 }
@@ -140,14 +141,11 @@ func (t *TaskSet) runByKey(ctx context.Context, key interface{}) (e error) {
 // run the taskCmd, before run, it does:
 // Locate tc.name under runtime GetFilePath(), if found, it's script file, else it's script string
 // If script have function @routine, append routine name
-func (tc *taskCmd) run(ctx context.Context) error {
+func (tc *taskCmd) run(ctx context.Context, dir string) error {
 
 	var r io.Reader
 	routine := tc.routine
-	arg, ok := FromContext(ctx)
-	if !ok {
-		return fmt.Errorf("Context don't have Arg")
-	}
+	arg, _ := FromContext(ctx)
 
 	// regular expression used to match shell function name
 	exp := regexp.MustCompile(fmt.Sprintf(` *%s *\( *\)`, tc.routine))
@@ -178,6 +176,9 @@ func (tc *taskCmd) run(ctx context.Context) error {
 		command.Cmd.Stdin = io.MultiReader(r, strings.NewReader(tc.routine))
 	} else {
 		command.Cmd.Stdin = r
+	}
+	if dir != "" {
+		command.Cmd.Dir = dir
 	}
 
 	return command.Run(tc.routine)

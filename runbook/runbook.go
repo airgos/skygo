@@ -168,6 +168,13 @@ func (rb *Runbook) RunTask(ctx context.Context, name string) error {
 		return err
 	}
 
+	// if taskset's dir is empty, try to use S
+	if rb.taskset.Dir == "" {
+		if dir, ok := arg.LookupVar("S"); ok {
+			rb.taskset.Dir = dir
+		}
+	}
+
 	if err := rb.taskset.runByKey(ctx, name); err != nil {
 		return err
 	}
@@ -179,7 +186,10 @@ func (rb *Runbook) RunTask(ctx context.Context, name string) error {
 // After invoking Play, abort if current stage is @name
 func (rb *Runbook) Range(ctx context.Context, name string) error {
 
-	arg, _ := FromContext(ctx)
+	arg, ok := FromContext(ctx)
+	if !ok {
+		return fmt.Errorf("Context don't bind Arg")
+	}
 	if name != "" && rb.Stage(name) == nil {
 		return fmt.Errorf("%s has no stage %s", arg.Owner, name)
 	}
@@ -276,6 +286,12 @@ func (s *Stage) Summary(summary string) *Stage {
 	return s
 }
 
+// Dir specifies the working directory of the stage explicitly
+func (s *Stage) Dir(dir string) *Stage {
+	s.tasks.Dir = dir
+	return s
+}
+
 // Next stage
 func (s *Stage) Next() *Stage {
 
@@ -334,9 +350,19 @@ func (s *Stage) Play(ctx context.Context) error {
 
 		defer atomic.StoreUint32(&s.executed, 1)
 
-		arg, _ := FromContext(ctx)
+		arg, ok := FromContext(ctx)
+		if !ok {
+			return fmt.Errorf("Context don't bind Arg")
+		}
 		if handled, err := s.rangeIn(s.name, arg); handled || err != nil {
 			return err
+		}
+
+		// if taskset's dir is empty, try to use S
+		if s.tasks.Dir == "" {
+			if dir, ok := arg.LookupVar("S"); ok {
+				s.tasks.Dir = dir
+			}
 		}
 
 		if err := s.tasks.play(ctx); err != nil {

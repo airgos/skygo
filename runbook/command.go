@@ -28,9 +28,6 @@ func NewCommand(ctx context.Context, name string, args ...string) *Command {
 
 	cmd := exec.CommandContext(ctx, name, args...)
 	cmd.Stdout, cmd.Stderr = arg.Output()
-	if dir, ok := arg.LookupVar("S"); ok {
-		cmd.Dir = dir
-	}
 
 	cmd.Env = os.Environ() // inherits OS global env, like HTTP_PROXY
 	arg.Range(func(key, value string) {
