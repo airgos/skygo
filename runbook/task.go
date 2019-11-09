@@ -25,9 +25,13 @@ type taskCmd struct {
 	summary string // description summary
 }
 
+// TaskGoFunc prototype
+// dir is working directory
+type TaskGoFunc func(ctx context.Context, dir string) error
+
 // taskGo represent golang func task
 type taskGo struct {
-	f       func(ctx context.Context, dir string) error
+	f       TaskGoFunc
 	summary string // description summary
 }
 
@@ -57,7 +61,9 @@ func (t *TaskSet) Has(name string) bool {
 	return ok
 }
 
-// Add task. Return ErrTaskAdded if key was set
+// Add push one task to taskset. Return ErrTaskAdded if key exists
+// It supports two kind of task: TaskGoFunc & script. script is a script file name or string
+// if it's a script file, task runner will try to find it under FilesPath
 func (t *TaskSet) Add(key interface{}, task interface{}, summary string) error {
 
 	v := task
@@ -76,6 +82,9 @@ func (t *TaskSet) Add(key interface{}, task interface{}, summary string) error {
 		v = taskCmd{routine: routine, script: kind, summary: summary}
 
 	case func(context.Context, string) error:
+		v = taskGo{f: TaskGoFunc(kind), summary: summary}
+
+	case TaskGoFunc:
 		v = taskGo{f: kind, summary: summary}
 
 	default:

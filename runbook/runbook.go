@@ -302,7 +302,7 @@ func (s *Stage) Next() *Stage {
 	return nil
 }
 
-// AddTask add one task with weight
+// AddTask add one task with weight to stage's taskset
 func (s *Stage) AddTask(weight int, task interface{}) (*Stage, error) {
 
 	if s == nil {
@@ -313,7 +313,7 @@ func (s *Stage) AddTask(weight int, task interface{}) (*Stage, error) {
 	return s, err
 }
 
-// DelTask delete task of weight
+// DelTask delete task of weight from stage's taskset
 func (s *Stage) DelTask(weight int) *Stage {
 
 	if s == nil {
