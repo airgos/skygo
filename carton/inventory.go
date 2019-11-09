@@ -55,7 +55,7 @@ func add(carton Builder, file string, f func()) {
 
 	name := carton.Provider()
 	if name == "" {
-		panic(fmt.Sprintf("Carton Err:", ErrNoName))
+		panic(fmt.Sprintln("Carton Err:", ErrNoName))
 	}
 
 	if _, ok := inventory[name]; ok {
