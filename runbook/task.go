@@ -137,21 +137,21 @@ func (t *TaskSet) play(ctx context.Context) error {
 	sort.Ints(weight)
 
 	for _, w := range weight {
-		if err := t.runtask(ctx, t.set[w]); err != nil {
+		if err := t.runtask(ctx, w); err != nil {
 			return err
 		}
 	}
 	for _, k := range name {
-		if err := t.runtask(ctx, t.set[k]); err != nil {
+		if err := t.runtask(ctx, k); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (t *TaskSet) runtask(ctx context.Context, task interface{}) (e error) {
+func (t *TaskSet) runtask(ctx context.Context, key interface{}) (e error) {
 
-	switch kind := task.(type) {
+	switch kind := t.set[key].(type) {
 	default:
 		// fmt.Printf("%T", kind)
 		e = ErrUnknownTaskType
@@ -161,10 +161,6 @@ func (t *TaskSet) runtask(ctx context.Context, task interface{}) (e error) {
 		e = kind.run(ctx, t.Dir)
 	}
 	return
-}
-
-func (t *TaskSet) runByKey(ctx context.Context, key interface{}) (e error) {
-	return t.runtask(ctx, t.set[key])
 }
 
 // run the taskCmd, before run, it does:

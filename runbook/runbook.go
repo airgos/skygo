@@ -175,7 +175,7 @@ func (rb *Runbook) RunTask(ctx context.Context, name string) error {
 		}
 	}
 
-	if err := rb.taskset.runByKey(ctx, name); err != nil {
+	if err := rb.taskset.runtask(ctx, name); err != nil {
 		return err
 	}
 	return rb.rangeOut(name, arg)
