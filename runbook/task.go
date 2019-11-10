@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"sort"
 	"strings"
 
@@ -72,6 +73,13 @@ func (t *TaskSet) Add(key interface{}, task interface{}, summary string) error {
 		return ErrTaskAdded
 	}
 
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Print(r)
+			os.Exit(2)
+		}
+	}()
+
 	switch kind := task.(type) {
 
 	case string:
@@ -88,7 +96,19 @@ func (t *TaskSet) Add(key interface{}, task interface{}, summary string) error {
 		v = taskGo{f: kind, summary: summary}
 
 	default:
-		return ErrUnknownTaskType
+		b := strings.Builder{}
+		b.WriteString(fmt.Sprintf("Unknown task type: %T\n\n", task))
+
+		pc, file, line, _ := runtime.Caller(1)
+		details := runtime.FuncForPC(pc)
+		b.WriteString(fmt.Sprintf("%s:%d\n", file, line))
+		b.WriteString(fmt.Sprintf("\t%s\n", details.Name()))
+
+		pc, file, line, _ = runtime.Caller(2)
+		details = runtime.FuncForPC(pc)
+		b.WriteString(fmt.Sprintf("%s:%d\n", file, line))
+		b.WriteString(fmt.Sprintf("\t%s\n", details.Name()))
+		panic(b.String())
 	}
 
 	t.set[key] = v
