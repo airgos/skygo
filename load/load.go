@@ -111,10 +111,9 @@ func NewLoad(ctx context.Context, name string, loaders int) (*Load, int) {
 	load.KV.Init2("loader", map[string]interface{}{
 		"TIMEOUT": "1800", // unit is second, default is 30min
 
-		"DLDIR":      config.GetVar(config.DLDIR),
-		"TOPDIR":     config.GetVar(config.TOPDIR),
-		"IMAGEDIR":   config.GetVar(config.IMAGEDIR),
-		"STAGINGDIR": config.GetVar(config.STAGINGDIR),
+		"DLDIR":    config.GetVar(config.DLDIR),
+		"TOPDIR":   config.GetVar(config.TOPDIR),
+		"IMAGEDIR": config.GetVar(config.IMAGEDIR),
 	})
 
 	load.pool = xsync.NewPool(loaders, func(i int) interface{} {
@@ -147,7 +146,6 @@ func NewLoad(ctx context.Context, name string, loaders int) (*Load, int) {
 
 	os.MkdirAll(config.GetVar(config.DLDIR), 0755)
 	os.MkdirAll(config.GetVar(config.IMAGEDIR), 0755)
-	os.MkdirAll(config.GetVar(config.STAGINGDIR), 0755)
 	return &load, loaders
 }
 
