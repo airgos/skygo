@@ -175,20 +175,25 @@ func (tc *taskCmd) run(ctx context.Context, dir string) error {
 	// regular expression used to match shell function name
 	exp := regexp.MustCompile(fmt.Sprintf(` *%s *\( *\)`, tc.routine))
 
-	for _, d := range arg.FilesPath {
-		path := filepath.Join(d, tc.script)
-		if info, err := os.Stat(path); err == nil &&
-			info.Mode().IsRegular() {
+	if len(strings.Split(tc.script, "\n")) == 1 {
+		log.Trace("Try to find script under FilesPath")
+		for _, d := range arg.FilesPath {
+			path := filepath.Join(d, tc.script)
+			if info, err := os.Stat(path); err == nil &&
+				info.Mode().IsRegular() {
 
-			b, _ := ioutil.ReadFile(path)
-			if !exp.Match(b) {
-				routine = ""
+				b, _ := ioutil.ReadFile(path)
+				if !exp.Match(b) {
+					routine = ""
+				}
+
+				r, _ = os.Open(path)
+				break
 			}
-
-			r, _ = os.Open(path)
-			break
 		}
 	}
+
+	//script string
 	if r == nil {
 		if !exp.MatchString(tc.script) {
 			routine = ""
