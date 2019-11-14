@@ -16,9 +16,9 @@ import (
 	"runtime"
 	"strings"
 
-	"merge/fetch/utils"
 	"merge/runbook"
 	"merge/runbook/xsync"
+	"merge/utils"
 )
 
 type fileSync struct {

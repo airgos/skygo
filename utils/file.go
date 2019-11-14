@@ -5,8 +5,6 @@
 package utils
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"fmt"
 	"io"
 	"os"
@@ -41,19 +39,4 @@ func CreateSymbolicLink(fpath string, linkName string) error {
 	}
 
 	return nil
-}
-
-// Sha256Matched return whether checksum is matched
-func Sha256Matched(csum, fpath string) (bool, string) {
-
-	file, _ := os.Open(fpath)
-	h := sha256.New()
-	if _, err := io.Copy(h, file); err != nil {
-		return false, ""
-	}
-	sum := hex.EncodeToString(h.Sum(nil))
-	if sum == csum {
-		return true, ""
-	}
-	return false, sum
 }

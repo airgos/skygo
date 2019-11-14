@@ -15,9 +15,10 @@ import (
 	"strconv"
 	"strings"
 
-	"merge/fetch/utils"
 	"merge/runbook"
 	"merge/runbook/xsync"
+	"merge/utils"
+	"merge/utils/unarchive"
 )
 
 //TODO:
@@ -63,7 +64,7 @@ func httpAndUnpack(ctx context.Context, url string,
 		os.Create(done)
 	}
 
-	if unar := utils.NewUnarchive(to); unar != nil {
+	if unar := unarchive.NewUnarchive(to); unar != nil {
 		fmt.Fprintf(stdout, "unarchive %s\n", to)
 		if e := unar.Unarchive(to, arg.GetVar("WORKDIR")); e != nil {
 			return fmt.Errorf("unarchive %s failed:%s", to, e.Error())

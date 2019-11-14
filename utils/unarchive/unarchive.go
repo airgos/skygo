@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package utils
+package unarchive
 
 import (
 	"archive/tar"
@@ -14,6 +14,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"merge/utils"
 )
 
 // Unarchiver is the interface to extract archiver
@@ -60,7 +62,7 @@ func (zipfmt) Unarchive(fpath, dest string) error {
 		}
 		defer f.Close()
 		fpath := filepath.Join(dest, zf.Name)
-		if e := CopyFile(fpath, zf.FileInfo().Mode(), f); e != nil {
+		if e := utils.CopyFile(fpath, zf.FileInfo().Mode(), f); e != nil {
 			return e
 		}
 	}
@@ -101,10 +103,10 @@ func unTar(tr *tar.Reader, dest string) error {
 				return fmt.Errorf("mkdir %s:%v", target, err)
 			}
 		case tar.TypeReg, tar.TypeRegA, tar.TypeChar, tar.TypeBlock, tar.TypeFifo:
-			CopyFile(target, header.FileInfo().Mode(), tr)
+			utils.CopyFile(target, header.FileInfo().Mode(), tr)
 			os.Chtimes(target, header.AccessTime, header.ModTime)
 		case tar.TypeSymlink:
-			CreateSymbolicLink(target, header.Linkname)
+			utils.CreateSymbolicLink(target, header.Linkname)
 
 		default:
 			return fmt.Errorf("%s: Unknown Typeflag", header.Name)
