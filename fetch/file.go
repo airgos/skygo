@@ -27,7 +27,7 @@ type fileSync struct {
 
 func file(ctx context.Context, url string, notify func(bool)) error {
 
-	arg, _ := runbook.FromContext(ctx)
+	arg := runbook.FromContext(ctx)
 	stdout, _ := arg.Output()
 
 	url = url[7:]
@@ -47,7 +47,7 @@ func file(ctx context.Context, url string, notify func(bool)) error {
 						return err
 					}
 
-					rel := strings.TrimPrefix(path, u)   // remove prefix dir of FilesPath
+					rel := strings.TrimPrefix(path, u)                  // remove prefix dir of FilesPath
 					target := filepath.Join(arg.GetVar("WORKDIR"), rel) // full target path
 
 					if info.IsDir() {

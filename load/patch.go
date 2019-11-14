@@ -37,7 +37,7 @@ git apply $PATCHFILE && {
 // patch search patch/diff files under WorkPath, sort, then apply
 func patch(ctx context.Context, dir string) error {
 
-	arg, _ := runbook.FromContext(ctx)
+	arg := runbook.FromContext(ctx)
 
 	file, e := os.Open(arg.GetVar("WORKDIR"))
 	if e != nil {

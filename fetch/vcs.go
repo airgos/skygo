@@ -110,7 +110,7 @@ func (vcs *vcsCmd) run(dir, cmdline string) ([]byte, error) {
 	command := runbook.NewCommand(vcs.ctx, vcs.cmd, args...)
 	command.Cmd.Dir = dir
 
-	arg, _ := runbook.FromContext(vcs.ctx)
+	arg := runbook.FromContext(vcs.ctx)
 	stdout, stderr := arg.Output()
 	command.Cmd.Stdout, command.Cmd.Stderr =
 		io.MultiWriter(stdout, &buf),
@@ -203,7 +203,7 @@ func vcsFetch(ctx context.Context, url string,
 
 	var rev1, rev2 []byte
 
-	arg, _ := runbook.FromContext(ctx)
+	arg := runbook.FromContext(ctx)
 	repo := url
 	tag := ""
 

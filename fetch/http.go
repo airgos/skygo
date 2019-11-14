@@ -28,7 +28,7 @@ func httpAndUnpack(ctx context.Context, url string,
 	httpGet func(ctx context.Context, from, to string) error,
 	notify func(bool)) error {
 
-	arg, _ := runbook.FromContext(ctx)
+	arg := runbook.FromContext(ctx)
 	stdout, _ := arg.Output()
 
 	slice := strings.Split(url, "#")

@@ -170,7 +170,7 @@ func (tc *taskCmd) run(ctx context.Context, dir string) error {
 
 	var r io.Reader
 	routine := tc.routine
-	arg, _ := FromContext(ctx)
+	arg := FromContext(ctx)
 
 	// regular expression used to match shell function name
 	exp := regexp.MustCompile(fmt.Sprintf(` *%s *\( *\)`, tc.routine))

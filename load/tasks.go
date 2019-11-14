@@ -16,7 +16,7 @@ import (
 
 func cleanall(ctx context.Context, dir string) error {
 
-	arg, _ := runbook.FromContext(ctx)
+	arg := runbook.FromContext(ctx)
 	wd := arg.GetVar("WORKDIR")
 
 	os.RemoveAll(wd)
@@ -26,7 +26,7 @@ func cleanall(ctx context.Context, dir string) error {
 
 func printenv(ctx context.Context, dir string) error {
 
-	arg, _ := runbook.FromContext(ctx)
+	arg := runbook.FromContext(ctx)
 	fmt.Println()
 	arg.Range(func(k, v string) {
 		fmt.Printf("%12s:\t%s\n", k, v)
@@ -36,7 +36,7 @@ func printenv(ctx context.Context, dir string) error {
 
 func cleanstate(ctx context.Context, dir string) error {
 
-	arg, _ := runbook.FromContext(ctx)
+	arg := runbook.FromContext(ctx)
 	c := arg.Private.(carton.Builder)
 	rb := c.Runbook()
 	cleanstate1(rb, "", arg.GetVar("T"))

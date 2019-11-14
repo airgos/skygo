@@ -148,7 +148,7 @@ func (fetch *Resource) Selected() (*SrcURL, string) {
 func (fetch *Resource) Download(ctx context.Context,
 	notify func(ctx context.Context)) error {
 
-	arg, _ := runbook.FromContext(ctx)
+	arg := runbook.FromContext(ctx)
 
 	res, _ := fetch.Selected()
 	if res == nil {

@@ -163,7 +163,7 @@ func (rb *Runbook) RunTask(ctx context.Context, name string) error {
 	}
 
 	log.Trace("Run independent task: %s", name)
-	arg, _ := FromContext(ctx)
+	arg := FromContext(ctx)
 	if handled, err := rb.rangeIn(name, arg); handled || err != nil {
 		return err
 	}
@@ -186,10 +186,7 @@ func (rb *Runbook) RunTask(ctx context.Context, name string) error {
 // After invoking Play, abort if current stage is @name
 func (rb *Runbook) Range(ctx context.Context, name string) error {
 
-	arg, ok := FromContext(ctx)
-	if !ok {
-		return fmt.Errorf("Context don't bind Arg")
-	}
+	arg := FromContext(ctx)
 	if name != "" && rb.Stage(name) == nil {
 		return fmt.Errorf("%s has no stage %s", arg.Owner, name)
 	}
@@ -214,7 +211,7 @@ func (rb *Runbook) Range(ctx context.Context, name string) error {
 // Play run stage's tasks or the independent task
 func (rb *Runbook) Play(ctx context.Context, name string) error {
 
-	arg, _ := FromContext(ctx)
+	arg := FromContext(ctx)
 
 	if s := rb.Stage(name); s != nil {
 		if num := s.taskset.Len(); num > 0 {
@@ -326,7 +323,7 @@ func (s *Stage) DelTask(weight int) *Stage {
 // Reset clear executed status, then s.Play can be run again
 func (s *Stage) Reset(ctx context.Context) {
 
-	arg, _ := FromContext(ctx)
+	arg := FromContext(ctx)
 	s.rangeReset(s.name, arg)
 
 	s.m.Lock()
@@ -350,10 +347,7 @@ func (s *Stage) Play(ctx context.Context) error {
 
 		defer atomic.StoreUint32(&s.executed, 1)
 
-		arg, ok := FromContext(ctx)
-		if !ok {
-			return fmt.Errorf("Context don't bind Arg")
-		}
+		arg := FromContext(ctx)
 		if handled, err := s.rangeIn(s.name, arg); handled || err != nil {
 			return err
 		}
@@ -448,7 +442,10 @@ func NewContext(ctx context.Context, arg *Arg) context.Context {
 }
 
 // FromContext returns the Arg value stored in ctx, if any
-func FromContext(ctx context.Context) (*Arg, bool) {
+func FromContext(ctx context.Context) *Arg {
 	arg, ok := ctx.Value(argToken("arg")).(*Arg)
-	return arg, ok
+	if !ok {
+		panic("Context don't bind Arg")
+	}
+	return arg
 }

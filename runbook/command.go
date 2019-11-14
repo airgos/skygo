@@ -24,7 +24,7 @@ type Command struct {
 // NewCommand new exec.Cmd wrapper Command
 func NewCommand(ctx context.Context, name string, args ...string) *Command {
 
-	arg, _ := FromContext(ctx)
+	arg := FromContext(ctx)
 
 	cmd := exec.CommandContext(ctx, name, args...)
 	cmd.Stdout, cmd.Stderr = arg.Output()
@@ -42,7 +42,7 @@ func NewCommand(ctx context.Context, name string, args ...string) *Command {
 // CmdRun push child processes into the same process group then run
 func (c *Command) Run(stage string) error {
 
-	arg, _ := FromContext(c.ctx)
+	arg := FromContext(c.ctx)
 
 	//Child processes get the same process group id(PGID) as their parents by default
 	c.Cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
