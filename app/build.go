@@ -11,8 +11,8 @@ import (
 	"os"
 	"strings"
 
-	"merge/load"
-	"merge/log"
+	"skygo/load"
+	"skygo/log"
 )
 
 type build struct {

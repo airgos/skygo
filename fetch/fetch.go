@@ -14,9 +14,9 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"merge/log"
-	"merge/runbook"
-	"merge/runbook/xsync"
+	"skygo/log"
+	"skygo/runbook"
+	"skygo/runbook/xsync"
 )
 
 // Resource represent state of fetch

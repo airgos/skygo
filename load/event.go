@@ -10,8 +10,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"merge/carton"
-	"merge/runbook"
+	"skygo/carton"
+	"skygo/runbook"
 )
 
 func addEventListener(rb *runbook.Runbook) {

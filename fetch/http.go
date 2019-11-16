@@ -15,10 +15,10 @@ import (
 	"strconv"
 	"strings"
 
-	"merge/runbook"
-	"merge/runbook/xsync"
-	"merge/utils"
-	"merge/utils/unarchive"
+	"skygo/runbook"
+	"skygo/runbook/xsync"
+	"skygo/utils"
+	"skygo/utils/unarchive"
 )
 
 //TODO:
@@ -143,7 +143,7 @@ func fetchInParallel(ctx context.Context, to, url string, length int) error {
 		return err
 	}
 
-	// merge file
+	// skygo file
 	files := make([]io.Reader, connections)
 	for i := 0; i < connections; i++ {
 		if files[i], e = os.Open(slices[i]); e != nil {

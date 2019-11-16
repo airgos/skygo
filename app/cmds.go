@@ -9,7 +9,7 @@ import (
 	"flag"
 	"fmt"
 
-	"merge/log"
+	"skygo/log"
 )
 
 // App implement interface Application
@@ -21,7 +21,7 @@ type App struct {
 // New create top app that implement Application
 func New() *App {
 	app := new(App)
-	app.name = "merge"
+	app.name = "skygo"
 	return app
 }
 

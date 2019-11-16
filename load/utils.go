@@ -8,9 +8,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"merge/carton"
-	"merge/config"
-	"merge/log"
+	"skygo/carton"
+	"skygo/config"
+	"skygo/log"
 )
 
 // WorkDir calculates WORKDIR for carton

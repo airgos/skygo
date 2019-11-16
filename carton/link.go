@@ -6,8 +6,8 @@ package carton
 
 import (
 	"fmt"
-	"merge/fetch"
-	"merge/runbook"
+	"skygo/fetch"
+	"skygo/runbook"
 	"runtime"
 	"strings"
 )

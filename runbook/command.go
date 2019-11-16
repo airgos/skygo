@@ -11,7 +11,7 @@ import (
 	"os/exec"
 	"syscall"
 
-	"merge/log"
+	"skygo/log"
 )
 
 type Command struct {

@@ -14,9 +14,9 @@ import (
 	"runtime"
 	"strings"
 
-	"merge/fetch"
-	"merge/log"
-	"merge/runbook"
+	"skygo/fetch"
+	"skygo/log"
+	"skygo/runbook"
 )
 
 // Error used by carton

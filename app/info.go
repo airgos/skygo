@@ -9,8 +9,8 @@ import (
 	"flag"
 	"fmt"
 
-	"merge/carton"
-	"merge/load"
+	"skygo/carton"
+	"skygo/load"
 )
 
 type info struct {

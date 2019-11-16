@@ -16,9 +16,9 @@ import (
 	"runtime"
 	"strings"
 
-	"merge/runbook"
-	"merge/runbook/xsync"
-	"merge/utils"
+	"skygo/runbook"
+	"skygo/runbook/xsync"
+	"skygo/utils"
 )
 
 type fileSync struct {

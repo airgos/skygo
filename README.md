@@ -1,4 +1,4 @@
-## Merge
+## Skygo
 
 All-in-one frontend tool to help make embedded system easy
 

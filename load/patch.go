@@ -12,8 +12,8 @@ import (
 	"sort"
 	"strings"
 
-	"merge/log"
-	"merge/runbook"
+	"skygo/log"
+	"skygo/runbook"
 )
 
 var patchcmd = `

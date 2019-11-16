@@ -15,7 +15,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"merge/utils"
+	"skygo/utils"
 )
 
 // Unarchiver is the interface to extract archiver

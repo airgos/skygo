@@ -20,11 +20,11 @@ import (
 	"syscall"
 	"time"
 
-	"merge/carton"
-	"merge/config"
-	"merge/log"
-	"merge/runbook"
-	"merge/runbook/xsync"
+	"skygo/carton"
+	"skygo/config"
+	"skygo/log"
+	"skygo/runbook"
+	"skygo/runbook/xsync"
 )
 
 // Load represent state of load

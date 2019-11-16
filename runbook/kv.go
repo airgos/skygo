@@ -5,7 +5,7 @@
 package runbook
 
 import (
-	"merge/log"
+	"skygo/log"
 )
 
 // KV represents key-value state

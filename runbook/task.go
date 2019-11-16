@@ -16,7 +16,7 @@ import (
 	"sort"
 	"strings"
 
-	"merge/log"
+	"skygo/log"
 )
 
 // taskCmd represent shell script

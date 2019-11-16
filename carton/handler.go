@@ -5,8 +5,8 @@
 package carton
 
 import (
-	"merge/fetch"
-	"merge/runbook"
+	"skygo/fetch"
+	"skygo/runbook"
 )
 
 // Modifier is the interface to help modify carton

@@ -11,7 +11,7 @@ import (
 	"strings"
 	"sync"
 
-	"merge/log"
+	"skygo/log"
 )
 
 // hold all carton and its variants

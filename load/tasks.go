@@ -9,9 +9,9 @@ import (
 	"fmt"
 	"os"
 
-	"merge/carton"
-	"merge/log"
-	"merge/runbook"
+	"skygo/carton"
+	"skygo/log"
+	"skygo/runbook"
 )
 
 func cleanall(ctx context.Context, dir string) error {

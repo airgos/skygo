@@ -13,7 +13,7 @@ import (
 	"regexp"
 	"strings"
 
-	"merge/runbook"
+	"skygo/runbook"
 )
 
 // inspired by go/src/cmd/go/internal/get/vcs.go
