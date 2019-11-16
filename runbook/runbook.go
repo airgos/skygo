@@ -300,14 +300,10 @@ func (s *Stage) Next() *Stage {
 }
 
 // AddTask add one task with weight to stage's taskset
-func (s *Stage) AddTask(weight int, task interface{}) (*Stage, error) {
+func (s *Stage) AddTask(weight int, task interface{}) *Stage {
 
-	if s == nil {
-		return nil, ErrNilStage
-	}
-
-	err := s.taskset.Add(weight, task, "")
-	return s, err
+	s.taskset.Add(weight, task, "")
+	return s
 }
 
 // DelTask delete task of weight from stage's taskset

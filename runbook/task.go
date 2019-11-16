@@ -65,12 +65,11 @@ func (t *TaskSet) Has(name string) bool {
 // Add push one task to taskset. Return ErrTaskAdded if key exists
 // It supports two kind of task: TaskGoFunc & script. script is a script file name or string
 // if it's a script file, task runner will try to find it under FilesPath
-func (t *TaskSet) Add(key interface{}, task interface{}, summary string) error {
+func (t *TaskSet) Add(key interface{}, task interface{}, summary string) {
 
 	v := task
 	if _, ok := t.set[key]; ok {
-		log.Error("Task %v had been owned by %s\n", key, t.owner)
-		return ErrTaskAdded
+		panic(fmt.Sprintf("Task %v had been owned by %s\n", key, t.owner))
 	}
 
 	defer func() {
@@ -112,7 +111,6 @@ func (t *TaskSet) Add(key interface{}, task interface{}, summary string) error {
 	}
 
 	t.set[key] = v
-	return nil
 }
 
 // Del delete task
