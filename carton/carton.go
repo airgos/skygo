@@ -34,7 +34,7 @@ const (
 	PREPARE = "prepare"
 	BUILD   = "build"
 	INSTALL = "install"
-	TEST    = "test"
+	PACKAGE = "package"
 )
 
 // The Carton represents the state of carton
@@ -86,7 +86,13 @@ func NewCarton(name string, m func(c *Carton)) {
 		fetch.InsertAfter(PATCH).Summary("Locates patch files and applies them to the source code").
 			InsertAfter(PREPARE).Summary("Prepares something for build").
 			InsertAfter(BUILD).Summary("Compiles the source in the compilation directory").
-			InsertAfter(INSTALL).Summary("Install files from the compilation directory")
+			InsertAfter(INSTALL).Summary("Install files from the compilation directory").
+			InsertAfter(PACKAGE).Summary("Package files from the installation directory").
+			AddTask(0, func(ctx context.Context, dir string) error {
+				arg := runbook.FromContext(ctx)
+				return c.Package(arg.GetVar("D"), arg.GetVar("PKGD"))
+			})
+
 		c.runbook = rb
 
 		m(c)
