@@ -9,7 +9,7 @@ import (
 	"flag"
 	"fmt"
 
-	"skygo/log"
+	"skygo/utils/log"
 )
 
 // App implement interface Application

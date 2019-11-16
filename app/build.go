@@ -12,7 +12,7 @@ import (
 	"strings"
 
 	"skygo/load"
-	"skygo/log"
+	"skygo/utils/log"
 )
 
 type build struct {

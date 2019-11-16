@@ -22,9 +22,9 @@ import (
 
 	"skygo/carton"
 	"skygo/config"
-	"skygo/log"
 	"skygo/runbook"
 	"skygo/runbook/xsync"
+	"skygo/utils/log"
 )
 
 // Load represent state of load

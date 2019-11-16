@@ -10,7 +10,7 @@ import (
 
 	"skygo/carton"
 	"skygo/config"
-	"skygo/log"
+	"skygo/utils/log"
 )
 
 // WorkDir calculates WORKDIR for carton

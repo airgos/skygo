@@ -15,8 +15,8 @@ import (
 	"strings"
 
 	"skygo/fetch"
-	"skygo/log"
 	"skygo/runbook"
+	"skygo/utils/log"
 )
 
 // Error used by carton

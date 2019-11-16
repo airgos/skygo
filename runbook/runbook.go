@@ -14,7 +14,7 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"skygo/log"
+	"skygo/utils/log"
 )
 
 // Error used by Runbook

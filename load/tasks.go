@@ -10,8 +10,8 @@ import (
 	"os"
 
 	"skygo/carton"
-	"skygo/log"
 	"skygo/runbook"
+	"skygo/utils/log"
 )
 
 func cleanall(ctx context.Context, dir string) error {
