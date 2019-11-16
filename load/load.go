@@ -188,6 +188,7 @@ func (l *Load) perform(ctx context.Context, c carton.Builder, target string,
 	os.MkdirAll(x.arg.GetVar("WORKDIR"), 0755) //WORKDIR
 	os.MkdirAll(x.arg.GetVar("T"), 0755)       //temp dir
 	os.MkdirAll(x.arg.GetVar("D"), 0755)
+	os.MkdirAll(x.arg.GetVar("PKGD"), 0755)
 
 	if nodeps && target != "" {
 		err = c.Runbook().Play(ctx, target)
@@ -302,9 +303,10 @@ func (l *Load) setupArg(carton carton.Builder, arg *runbook.Arg,
 		"ISNATIVE": fmt.Sprintf("%v", isNative),
 		"WORKDIR":  wd,
 
-		"PN": carton.Provider(),
-		"T":  filepath.Join(wd, "temp"),
-		"D":  filepath.Join(wd, "image"),
+		"PN":   carton.Provider(), // PN: provider name
+		"T":    filepath.Join(wd, "temp"),
+		"D":    filepath.Join(wd, "image"),    // install destination directory
+		"PKGD": filepath.Join(wd, "packages"), // points to directory for files to be packaged
 
 		"TARGETARCH":   getTargetArch(carton, isNative),
 		"TARGETOS":     getTargetOS(carton, isNative),
