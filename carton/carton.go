@@ -15,6 +15,7 @@ import (
 	"strings"
 
 	"skygo/fetch"
+	"skygo/pkg"
 	"skygo/runbook"
 	"skygo/utils/log"
 )
@@ -56,6 +57,8 @@ type Carton struct {
 	runbook *runbook.Runbook
 
 	runbook.KV // embed key-value
+
+	pkg.Packages // packager
 }
 
 // NewCarton create a carton and add to inventory
@@ -103,7 +106,11 @@ func (c *Carton) Init(file string, arg Modifier, modify func(arg Modifier)) {
 
 		c.cartons = append(c.cartons, c.name)
 		c.KV.Init(c.name)
-		c.SetKv("CN", c.name) //CN: carton name
+		c.SetKv("CN", c.name) //CN: carton name. By default, CN is the same as PN(c.name, provider name)
+
+		// create two packages: provider, provider-dev
+		c.NewPkg(c.name)
+		c.NewPkg(c.name + "-dev")
 
 		modify(arg)
 	})
