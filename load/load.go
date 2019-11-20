@@ -300,8 +300,7 @@ func (l *Load) setupArg(carton carton.Builder, arg *runbook.Arg,
 
 	// key-value for each carton's context
 	for k, v := range map[string]string{
-		"ISNATIVE": fmt.Sprintf("%v", isNative),
-		"WORKDIR":  wd,
+		"WORKDIR": wd,
 
 		"PN":   carton.Provider(), // PN: provider name
 		"T":    filepath.Join(wd, "temp"),
@@ -314,6 +313,7 @@ func (l *Load) setupArg(carton carton.Builder, arg *runbook.Arg,
 	} {
 		arg.SetKv(k, v)
 	}
+	arg.SetKv("ISNATIVE", isNative)
 
 	if dir := carton.SrcDir(wd); dir != "" {
 		arg.SetKv("S", dir)
