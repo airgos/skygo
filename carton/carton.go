@@ -30,6 +30,7 @@ var (
 // predefined stage
 const (
 	FETCH   = "fetch"
+	SYSROOT = "sysroot"
 	PATCH   = "patch"
 	PREPARE = "prepare"
 	BUILD   = "build"
@@ -71,7 +72,9 @@ func NewCarton(name string, m func(c *Carton)) {
 	c.Init(file, c, func(arg Modifier) {
 
 		rb := runbook.NewRunbook()
-		fetch := rb.PushFront(FETCH).Summary("Fetchs the source code and extract")
+		rb.PushFront(SYSROOT).Summary("Prepares sysroot to build carton")
+
+		fetch := rb.PushBack(FETCH).Summary("Fetchs the source code and extract")
 		fetch.AddTask(0, func(ctx context.Context, dir string) error {
 			return c.fetch.Download(ctx,
 				// reset subsequent stages
@@ -86,8 +89,8 @@ func NewCarton(name string, m func(c *Carton)) {
 		fetch.InsertAfter(PATCH).Summary("Locates patch files and applies them to the source code").
 			InsertAfter(PREPARE).Summary("Prepares something for build").
 			InsertAfter(BUILD).Summary("Compiles the source in the compilation directory").
-			InsertAfter(INSTALL).Summary("Install files from the compilation directory").
-			InsertAfter(PACKAGE).Summary("Package files from the installation directory").
+			InsertAfter(INSTALL).Summary("Installs files from the compilation directory").
+			InsertAfter(PACKAGE).Summary("Packages files from the installation directory").
 			AddTask(0, func(ctx context.Context, dir string) error {
 				arg := runbook.FromContext(ctx)
 				return c.Package(arg.GetVar("D"), arg.GetVar("PKGD"))
