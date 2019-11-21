@@ -40,10 +40,13 @@ func (s *StageBox) Pop(path string) *StageBox {
 // Stage creates hard links to copies of available files under from into directory to
 func (s *StageBox) Stage(from, to string) error {
 
-	if err := s.stage(from, to); err != nil {
-		return err
+	// stage white list
+	for _, w := range s.whiteList {
+		if err := Stage(filepath.Join(from, w),
+			filepath.Join(to, w)); err != nil {
+			return err
+		}
 	}
-
 	// remove dir/files in blacklist
 	for _, b := range s.blackList {
 		t := filepath.Join(to, b)
@@ -53,47 +56,69 @@ func (s *StageBox) Stage(from, to string) error {
 	return nil
 }
 
-// creates hard links to copies of the white list under from into directory to
+// copy symbol link or create hard link
+func stageFile(from, to string, info os.FileInfo) error {
+
+	if info.Mode()&os.ModeSymlink != 0 {
+		from, err := os.Readlink(from)
+		if err != nil {
+			return err
+		}
+		log.Trace("Copy symbol link: %s --> %s\n", from, to)
+		return os.Symlink(from, to)
+	}
+
+	srcinfo, _ := os.Stat(filepath.Dir(from))
+	os.MkdirAll(filepath.Dir(to), srcinfo.Mode())
+
+	log.Trace("Create hark link:\n\t%s -->\n\t%s\n", from, to)
+	return os.Link(from, to)
+}
+
+// Stage creates hard links recursively
+// ignore if source @from does not exists
 // A hard Link:
 //   can’t cross the file system boundaries (i.e. A hardlink can only work on the same filesystem),
 //   can’t link directories,
 //   has the same inode number and permissions of original file,
 //   permissions will be updated if we change the permissions of source file,
-//   has the actual contents of original file, so that you still can view the contents, even if the original file moved or removed.
-func (s *StageBox) stage(from, to string) error {
+//   has the actual contents of original file, even if the original file moved or removed.
+func Stage(from, to string) error {
 
-	for _, w := range s.whiteList {
+	if info, err := os.Stat(from); err == nil && info.IsDir() {
+		log.Info("Staging recursively:\n\t%s -->\n\t%s\n", from, to)
+	} else if os.IsNotExist(err) {
+		return nil
+	}
 
-		root := filepath.Join(from, w)
-		if _, err := os.Stat(root); err != nil {
-			continue
+	// another way: use ioutil.ReadDir. which is faster ?
+	if err := filepath.Walk(from, func(path string, info os.FileInfo, err error) error {
+		var dest string
+
+		if err != nil {
+			return err
 		}
 
-		if err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
-			if err != nil {
-				return err
-			}
-
+		if from == path {
+			dest = to
 			if info.IsDir() {
+				os.MkdirAll(from, info.Mode())
+				return nil
+			}
+		} else {
+
+			rel := strings.TrimPrefix(path, from)
+			if info.IsDir() {
+				os.MkdirAll(filepath.Join(to, rel), info.Mode())
 				return nil
 			}
 
-			rel := strings.TrimPrefix(path, from)
-			if info.Mode().IsRegular() {
-				dest := filepath.Join(to, rel)
-				log.Trace("Staging hark link:\n\t%s -->\n\t%s\n", dest, path)
-				os.MkdirAll(filepath.Dir(dest), 0755)
-				return os.Link(path, dest)
-			} else {
-				link, err := os.Readlink(path)
-				if err == nil { // symbol link
-					os.Symlink(link, filepath.Join(to, rel))
-				}
-				return err
-			}
-		}); err != nil {
-			return err
+			dest = filepath.Join(to, rel)
 		}
+		return stageFile(path, dest, info)
+	}); err != nil {
+		return err
 	}
+
 	return nil
 }
