@@ -335,6 +335,12 @@ func (l *Load) setupRunbook(c carton.Builder) {
 		})
 	}
 
+	if s := rb.Stage(carton.SYSROOT); s != nil {
+		s.AddTask(0, func(ctx context.Context, dir string) error {
+			return prepare_sysroot(ctx, dir)
+		})
+	}
+
 	tset := rb.TaskSet()
 	tset.Add("cleanall", cleanall,
 		"Remove all intermediate stuff")
