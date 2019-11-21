@@ -6,6 +6,7 @@ package carton
 
 import (
 	"skygo/fetch"
+	"skygo/pkg"
 	"skygo/runbook"
 )
 
@@ -36,6 +37,9 @@ type Modifier interface {
 
 	// Return fetch state
 	Resource() *fetch.Resource
+
+	// Packager return package handler
+	Packager() pkg.Packager
 }
 
 // Builder is the interface to build a carton

@@ -281,6 +281,11 @@ func (c *Carton) SetRunbook(rb *runbook.Runbook) {
 	c.runbook = rb
 }
 
+// Package return package handler
+func (c *Carton) Packager() pkg.Packager {
+	return c
+}
+
 func (c *Carton) String() string {
 
 	var b strings.Builder

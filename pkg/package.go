@@ -33,7 +33,16 @@ type pkg struct {
 	name string // individual package name
 }
 
-// Packges represents the state of package
+// Package is interface to handle package
+type Packager interface {
+	// get individual package by name
+	GetPkg(name string) *utils.StageBox
+
+	// new individual package
+	NewPkg(name string) *utils.StageBox
+}
+
+// Packges implements interface Packager
 type Packages struct {
 	owner string
 	pkgs  map[string]pkg
