@@ -24,6 +24,7 @@ import (
 	"skygo/config"
 	"skygo/runbook"
 	"skygo/runbook/xsync"
+	"skygo/utils"
 	"skygo/utils/log"
 )
 
@@ -81,7 +82,7 @@ func NewLoad(ctx context.Context, name string, loaders int) (*Load, int) {
 	os.MkdirAll(buildir, 0755)
 	lockfile := filepath.Join(buildir, name+".lockfile")
 
-	if _, err := os.Stat(lockfile); err == nil {
+	if utils.IsExist(lockfile) {
 		fmt.Printf("another instance %s is running", name)
 		os.Exit(1)
 	}

@@ -10,6 +10,7 @@ import (
 
 	"skygo/carton"
 	"skygo/config"
+	"skygo/utils"
 	"skygo/utils/log"
 )
 
@@ -78,7 +79,7 @@ func isStagePlayed(stage string, tempDir string) bool {
 
 	done := filepath.Join(tempDir, stage+".done")
 
-	if _, err := os.Stat(done); err == nil {
+	if utils.IsExist(done) {
 		log.Trace("%s had been played. Skip it!", stage)
 		return true
 	}

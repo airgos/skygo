@@ -34,7 +34,7 @@ func file(ctx context.Context, url string, notify func(bool)) error {
 	for _, u := range arg.FilesPath {
 
 		root := filepath.Join(u, url)
-		if _, err := os.Stat(root); err == nil { // found
+		if utils.IsExist(root) {
 
 			g, ctx := xsync.WithContext(ctx)
 			paths := make(chan fileSync)
@@ -104,7 +104,7 @@ func copyFile(ctx context.Context, to, from string, stdout io.Writer) (bool, err
 	defer file.Close()
 	fileinfo, _ := file.Stat()
 
-	if _, err := os.Stat(to); err != nil {
+	if !utils.IsExist(to) {
 		fmt.Fprintf(stdout, "Copy %s to %s\n", from, to)
 		return true, utils.CopyFile(to, fileinfo.Mode(), file)
 	}

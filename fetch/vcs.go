@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"skygo/runbook"
+	"skygo/utils"
 )
 
 // inspired by go/src/cmd/go/internal/get/vcs.go
@@ -137,7 +138,9 @@ func (vcs *vcsCmd) lookupRepo(wd string) error {
 	vcs.dir = filepath.Join(wd, filepath.Base(path))
 	index := filepath.Join(vcs.dir, vcs.index)
 	dir := filepath.Dir(vcs.dir)
-	if _, err := os.Stat(index); err != nil && os.IsNotExist(err) {
+
+	// TODO: existence of .git can not make sure repo is ok
+	if !utils.IsExist(index) {
 		for _, cmd := range vcs.createCmd {
 			if _, e := vcs.run(dir, cmd); e != nil {
 				return e
@@ -145,7 +148,7 @@ func (vcs *vcsCmd) lookupRepo(wd string) error {
 		}
 	} else {
 		// index is invalid, to create repo again
-		if _, err = vcs.run(vcs.dir, vcs.revCmd); err != nil {
+		if _, err := vcs.run(vcs.dir, vcs.revCmd); err != nil {
 			os.RemoveAll(vcs.dir)
 			for _, cmd := range vcs.createCmd {
 				if _, e := vcs.run(dir, cmd); e != nil {

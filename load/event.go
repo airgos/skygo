@@ -12,6 +12,7 @@ import (
 
 	"skygo/carton"
 	"skygo/runbook"
+	"skygo/utils"
 )
 
 func addEventListener(rb *runbook.Runbook) {
@@ -92,7 +93,7 @@ func cleanTask(task string, arg *runbook.Arg) (bool, interface{}, error) {
 			return true, nil, nil
 		}
 
-		if _, err := os.Stat(dir); err != nil {
+		if !utils.IsExist(dir) {
 			return true, nil, nil
 		}
 	}

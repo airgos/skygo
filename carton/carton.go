@@ -17,6 +17,7 @@ import (
 	"skygo/fetch"
 	"skygo/pkg"
 	"skygo/runbook"
+	"skygo/utils"
 	"skygo/utils/log"
 )
 
@@ -235,7 +236,7 @@ func (c *Carton) SetSrcDir(dir string) error {
 	if !filepath.IsAbs(dir) {
 		_, file, _, _ := runtime.Caller(1)
 		r := filepath.Join(filepath.Dir(file), dir)
-		if _, e := os.Stat(r); e == nil {
+		if utils.IsExist(r) {
 			dir = r
 		}
 	}

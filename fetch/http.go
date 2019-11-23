@@ -43,7 +43,7 @@ func httpAndUnpack(ctx context.Context, url string,
 	to := filepath.Join(dldir, filepath.Base(from))
 
 	done := to + ".done"
-	if _, err := os.Stat(done); err != nil {
+	if !utils.IsExist(done) {
 
 		// TODO: if found in mirror, replace with mirror URL
 		fmt.Fprintf(stdout, "To download %s\n", from)
