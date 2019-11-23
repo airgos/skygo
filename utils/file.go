@@ -27,16 +27,26 @@ func CopyFile(name string, mode os.FileMode, r io.Reader) error {
 }
 
 // CreateSymbolicLink create symbol link
-func CreateSymbolicLink(fpath string, linkName string) error {
-	err := os.MkdirAll(filepath.Dir(fpath), 0755)
+func CreateSymbolicLink(filePath string, linkName string) error {
+	err := os.MkdirAll(filepath.Dir(filePath), 0755)
 	if err != nil {
-		return fmt.Errorf("%s: mkdir: %v", fpath, err)
+		return fmt.Errorf("%s: mkdir: %v", filePath, err)
 	}
 
-	err = os.Symlink(linkName, fpath)
+	err = os.Symlink(linkName, filePath)
 	if err != nil {
-		return fmt.Errorf("%s: making symbolic link: %v", fpath, err)
+		return fmt.Errorf("%s: making symbolic link: %v", filePath, err)
 	}
 
 	return nil
+}
+
+// IsExist returns a boolean indicating whether the filePath(a file or
+// directory) already exists
+func IsExist(filePath string) bool {
+	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+		return false
+	}
+
+	return true
 }
