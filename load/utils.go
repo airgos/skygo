@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 
 	"skygo/carton"
-	"skygo/config"
 	"skygo/utils"
 	"skygo/utils/log"
 )
@@ -31,7 +30,7 @@ func WorkDir(c carton.Builder, isNative bool) string {
 	if isNative {
 		pn = pn + "-native"
 	}
-	dir = filepath.Join(config.GetVar(config.BASEWKDIR), dir, pn, ver)
+	dir = filepath.Join(getVar(BASEWKDIR), dir, pn, ver)
 	dir, _ = filepath.Abs(dir)
 	return dir
 }
@@ -39,12 +38,12 @@ func WorkDir(c carton.Builder, isNative bool) string {
 func getTargetArch(c carton.Builder, isNative bool) string {
 
 	if isNative {
-		return config.GetVar(config.NATIVEARCH)
+		return getVar(NATIVEARCH)
 	}
 
-	arch, ok := c.LookupVar(config.TARGETARCH)
+	arch, ok := c.LookupVar(TARGETARCH)
 	if !ok {
-		if arch = config.GetVar(config.MACHINEARCH); arch == "" {
+		if arch = getVar(MACHINEARCH); arch == "" {
 			log.Error("MACHINEARCH is not set")
 		}
 	}
@@ -54,19 +53,19 @@ func getTargetArch(c carton.Builder, isNative bool) string {
 func getTargetOS(c carton.Builder, isNative bool) string {
 
 	if isNative {
-		return config.GetVar(config.NATIVEOS)
+		return getVar(NATIVEOS)
 	}
 
-	return config.GetVar(config.MACHINEOS)
+	return getVar(MACHINEOS)
 }
 
 func getTargetVendor(c carton.Builder, isNative bool) string {
 
 	if isNative {
-		return config.GetVar(config.NATIVEVENDOR)
+		return getVar(NATIVEVENDOR)
 	}
 
-	return config.GetVar(config.MACHINEVENDOR)
+	return getVar(MACHINEVENDOR)
 }
 
 // value of var S

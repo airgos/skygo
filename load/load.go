@@ -21,7 +21,6 @@ import (
 	"time"
 
 	"skygo/carton"
-	"skygo/config"
 	"skygo/runbook"
 	"skygo/runbook/xsync"
 	"skygo/utils"
@@ -76,9 +75,23 @@ func (l *loadError) Error() string {
 
 // NewLoad create load to build carton
 // loaders represent how many loader work. if its value is 0, it will use default value
+// BUG: it has no chance to modify BUILDIR etc after NewLoad
 func NewLoad(ctx context.Context, name string, loaders int) (*Load, int) {
 
-	buildir := config.GetVar(config.BUILDIR)
+	if loaders == 0 {
+		loaders = 2 * runtime.NumCPU()
+	}
+	log.Trace("MaxLoaders is set to %d\n", loaders)
+
+	load := Load{
+		arg:     make([]*runbook.Arg, loaders),
+		bufs:    make([]*bytes.Buffer, loaders),
+		loaders: loaders,
+	}
+
+	loadDefaultCfg(&load.KV)
+
+	buildir := defaultVars[BUILDIR].(string)
 	os.MkdirAll(buildir, 0755)
 	lockfile := filepath.Join(buildir, name+".lockfile")
 
@@ -97,25 +110,6 @@ func NewLoad(ctx context.Context, name string, loaders int) (*Load, int) {
 		os.Exit(1)
 	}
 	log.Trace("Create lock file %s", lockfile)
-
-	if loaders == 0 {
-		loaders = 2 * runtime.NumCPU()
-	}
-	log.Trace("MaxLoaders is set to %d\n", loaders)
-
-	load := Load{
-		arg:     make([]*runbook.Arg, loaders),
-		bufs:    make([]*bytes.Buffer, loaders),
-		loaders: loaders,
-	}
-
-	load.KV.Init2("loader", map[string]interface{}{
-		"TIMEOUT": "1800", // unit is second, default is 30min
-
-		"DLDIR":    config.GetVar(config.DLDIR),
-		"TOPDIR":   config.GetVar(config.TOPDIR),
-		"IMAGEDIR": config.GetVar(config.IMAGEDIR),
-	})
 
 	load.pool = xsync.NewPool(loaders, func(i int) interface{} {
 		x := pool{
@@ -145,8 +139,8 @@ func NewLoad(ctx context.Context, name string, loaders int) (*Load, int) {
 		}
 	}()
 
-	os.MkdirAll(config.GetVar(config.DLDIR), 0755)
-	os.MkdirAll(config.GetVar(config.IMAGEDIR), 0755)
+	os.MkdirAll(load.GetVar(DLDIR), 0755)
+	os.MkdirAll(load.GetVar(IMAGEDIR), 0755)
 	return &load, loaders
 }
 
