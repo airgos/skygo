@@ -18,8 +18,8 @@ import (
 var inventory = make(map[string]Builder)
 var virtualInventory = make(map[string]Builder)
 
-var initCh = make(chan func())
-var updateCh = make(chan func())
+var initCh = make(chan func())   // associated with NewCarton
+var updateCh = make(chan func()) // associated with Update
 
 var updateNum int
 
@@ -81,6 +81,7 @@ func addVirtual(carton Builder, target, file string) {
 }
 
 // Update find the carton and then update it in callback
+// modifier function m is called after carton @name is added by NewCarton
 func Update(name string, m func(Modifier)) {
 
 	carton, ok := inventory[name]

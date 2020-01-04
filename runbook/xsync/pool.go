@@ -17,7 +17,6 @@ type Pool struct {
 	m       sync.Mutex
 	head    list.List
 	waiters list.List
-	ready   chan interface{}
 }
 
 // newPool creates resource pool
@@ -67,7 +66,7 @@ func (p *Pool) Put(x interface{}) {
 	if p.waiters.Len() != 0 {
 		elem := p.waiters.Front()
 		ready := elem.Value.(chan struct{})
-		ready <- struct{}{}
+		close(ready)
 		p.waiters.Remove(elem)
 	}
 }
