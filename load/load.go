@@ -43,11 +43,18 @@ type Load struct {
 	once sync.Once
 
 	ctx    context.Context
-	cancel context.CancelFunc
+	cancel func()
+	exit   func() // clean up function
 
-	exit func() // clean up function
+	refcount
+	loaded [2]sync.Map
 
-	loaded sync.Map // record cartons loaded
+	loadCh chan *cartonMeta
+}
+
+type cartonMeta struct {
+	carton   carton.Builder
+	isNative bool
 }
 
 type pool struct {
@@ -87,6 +94,7 @@ func NewLoad(ctx context.Context, name string, loaders int) (*Load, int) {
 		arg:     make([]*runbook.Arg, loaders),
 		bufs:    make([]*bytes.Buffer, loaders),
 		loaders: loaders,
+		loadCh:  make(chan *cartonMeta),
 	}
 
 	loadDefaultCfg(&load.KV)
@@ -123,20 +131,23 @@ func NewLoad(ctx context.Context, name string, loaders int) (*Load, int) {
 		return &x
 	})
 
-	load.ctx, load.cancel = context.WithCancel(ctx)
+	ctx, cancel := context.WithCancel(ctx)
+	load.ctx = ctx
 	load.exit = func() {
 		os.Remove(lockfile)
 		log.Trace("Delete lock file %s", lockfile)
+	}
+	load.cancel = func() {
+		cancel()
+		close(load.loadCh)
 	}
 
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
 		sig := <-sigs
-		if load.cancel != nil {
-			log.Trace("loader: cancel context by signal %s", sig)
-			load.cancel()
-		}
+		log.Trace("loader: cancel context by signal %s", sig)
+		load.cancel()
 	}()
 
 	os.MkdirAll(load.GetVar(DLDIR), 0755)
@@ -155,7 +166,7 @@ func (l *Load) SetOutput(index int, stdout, stderr io.Writer) *Load {
 	return l
 }
 
-func (l *Load) perform(ctx context.Context, c carton.Builder, target string,
+func (l *Load) perform(c carton.Builder, target string,
 	nodeps bool, isNative bool) (err error) {
 
 	y, err := l.pool.Get(l.ctx)
@@ -172,7 +183,7 @@ func (l *Load) perform(ctx context.Context, c carton.Builder, target string,
 
 	timeout, _ := x.arg.LookupVar("TIMEOUT")
 	timeOut, _ := strconv.Atoi(timeout)
-	ctx, cancel := context.WithTimeout(ctx, time.Duration(timeOut)*time.Second)
+	ctx, cancel := context.WithTimeout(l.ctx, time.Duration(timeOut)*time.Second)
 	defer cancel()
 
 	ctx = runbook.NewContext(ctx, x.arg)
@@ -186,9 +197,9 @@ func (l *Load) perform(ctx context.Context, c carton.Builder, target string,
 	os.MkdirAll(x.arg.GetVar("PKGD"), 0755)
 
 	if nodeps && target != "" {
-		err = c.Runbook().Play(ctx, target)
+		err = c.Runbook().Play(ctx, target, l)
 	} else {
-		err = c.Runbook().Range(ctx, target)
+		err = c.Runbook().Range(ctx, target, l)
 	}
 
 	if err != nil {
@@ -199,81 +210,6 @@ func (l *Load) perform(ctx context.Context, c carton.Builder, target string,
 				err:    err,
 			}
 		})
-		return &l.err
-	}
-	return nil
-}
-
-func (l *Load) run(ctx context.Context, name, target string, isNative bool) {
-	var wg sync.WaitGroup
-
-	b, _, native, err := l.find(name)
-	if err != nil {
-		return
-	}
-
-	// inherits isNative
-	if native {
-		isNative = true
-	}
-
-	scan := func(deps []string) {
-		wg.Add(len(deps))
-		for _, d := range deps {
-			name := d
-			if i := strings.LastIndex(d, "@"); i >= 0 {
-				name = d[:i]
-				if target == "" {
-					target = d[i+1:]
-				}
-			}
-			go func(ctx context.Context, name, target string) {
-
-				select {
-				default:
-					l.run(ctx, name, target, isNative)
-				case <-ctx.Done():
-				}
-				wg.Done()
-			}(ctx, name, target)
-		}
-	}
-
-	scan(b.BuildDepends())
-	scan(b.Depends())
-	wg.Wait()
-
-	if err := l.perform(ctx, b, target, false, isNative); err != nil {
-		l.cancel()
-	}
-}
-
-// Run start loading
-func (l *Load) Run(name, target string, nodeps, force bool) error {
-
-	defer l.exit()
-
-	c, _, isNative, err := l.find(name)
-	if err != nil {
-		return err
-	}
-
-	rb := c.Runbook()
-	if rb.TaskSet().Has(target) {
-		nodeps = true
-	}
-
-	if force {
-		t := tempDir(c, isNative)
-		cleanstate1(rb, target, t)
-	}
-
-	if nodeps {
-		return l.perform(l.ctx, c, target, true, isNative)
-	}
-
-	l.run(l.ctx, name, target, false)
-	if l.err.err != nil {
 		return &l.err
 	}
 	return nil
@@ -318,11 +254,6 @@ func (l *Load) setupArg(carton carton.Builder, arg *runbook.Arg,
 func (l *Load) setupRunbook(c carton.Builder) {
 
 	rb := c.Runbook()
-	name := c.Provider()
-
-	if _, ok := l.loaded.Load(name); ok {
-		return // avoide configuration again
-	}
 
 	if s := rb.Stage(carton.PATCH); s != nil {
 		s.AddTask(0, func(ctx context.Context, dir string) error {
@@ -345,7 +276,6 @@ func (l *Load) setupRunbook(c carton.Builder) {
 		"Clean state cache of all stages")
 
 	addEventListener(rb)
-	l.loaded.LoadOrStore(name, true)
 }
 
 func (l *Load) find(name string) (c carton.Builder, isVirtual bool,
@@ -376,4 +306,103 @@ func (l *Load) Find(name string) (c carton.Builder, isVirtual bool,
 	isNative bool, err error) {
 	l.exit()
 	return l.find(name)
+}
+
+func index(isNative bool) int {
+
+	index := 0
+	if isNative {
+		index = 1
+	}
+	return index
+}
+
+func (l *Load) Wait(runbook, stage string, isNative bool) <-chan struct{} {
+
+	if _, ok := l.loaded[index(isNative)].Load(runbook); ok {
+		done := make(chan struct{})
+		close(done)
+		return done
+	}
+
+	c, _, native, _ := l.find(runbook)
+
+	// inherits isNative
+	if native {
+		isNative = true
+	}
+
+	l.refGet()
+	l.loadCh <- &cartonMeta{
+		carton:   c,
+		isNative: isNative,
+	}
+
+	if stage == "" {
+		stage = "package"
+	}
+	return c.Runbook().Stage(stage).Wait(isNative)
+}
+
+func (l *Load) run(c carton.Builder, target string, nodeps, isNative bool) {
+
+	wait := func(deps []string) {
+		for _, d := range deps {
+
+			carton := d
+			if i := strings.LastIndex(d, "@"); i >= 0 {
+				carton = d[:i]
+				if target == "" {
+					target = d[i+1:]
+				}
+			}
+
+			<-l.Wait(carton, target, isNative)
+		}
+	}
+
+	if !nodeps {
+		wait(c.BuildDepends())
+		wait(c.Depends())
+	}
+
+	if err := l.perform(c, target, nodeps, isNative); err != nil {
+		l.cancel()
+		return
+	}
+
+	l.loaded[index(isNative)].LoadOrStore(c.Provider(), struct{}{})
+	l.refPut(func() { close(l.loadCh) })
+}
+
+func (l *Load) Run(carton, target string, nodeps, force bool) error {
+
+	defer l.exit()
+
+	c, _, isNative, err := l.find(carton)
+	if err != nil {
+		return err
+	}
+
+	rb := c.Runbook()
+	if rb.TaskSet().Has(target) {
+		nodeps = true
+	}
+
+	if force {
+		t := tempDir(c, isNative)
+		cleanstate1(rb, target, t)
+	}
+
+	l.refGet()
+	go l.run(c, target, nodeps, isNative)
+
+	for meta := range l.loadCh {
+		go l.run(meta.carton, target, false, meta.isNative)
+	}
+
+	if l.err.err != nil {
+		return &l.err
+	}
+	return nil
 }
