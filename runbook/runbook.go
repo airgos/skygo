@@ -49,8 +49,11 @@ type Stage struct {
 	runbook *Runbook
 
 	m        sync.Mutex
-	executed uint32 // executed ?
+	executed [2]uint32 // executed ?
 	disabled bool
+
+	depends []string // dep format: runbookName[@stageName]
+	ready   [2]chan struct{}
 
 	// inherits event listeners
 	listeners
@@ -184,7 +187,7 @@ func (rb *Runbook) RunTask(ctx context.Context, name string) error {
 // Range iterates all stages and execute Play in the runbook
 // Abort if any stage failed
 // After invoking Play, abort if current stage is @name
-func (rb *Runbook) Range(ctx context.Context, name string) error {
+func (rb *Runbook) Range(ctx context.Context, name string, w Waiter) error {
 
 	arg := FromContext(ctx)
 	if name != "" && rb.Stage(name) == nil {
@@ -195,7 +198,7 @@ func (rb *Runbook) Range(ctx context.Context, name string) error {
 	for stage := rb.Head(); stage != nil; stage = stage.Next() {
 		if stage.taskset.Len() > 0 {
 
-			err := stage.Play(ctx)
+			err := stage.play(ctx, w)
 			if err != nil {
 				return err
 			}
@@ -209,7 +212,7 @@ func (rb *Runbook) Range(ctx context.Context, name string) error {
 }
 
 // Play run stage's tasks or the independent task
-func (rb *Runbook) Play(ctx context.Context, name string) error {
+func (rb *Runbook) Play(ctx context.Context, name string, w Waiter) error {
 
 	arg := FromContext(ctx)
 
@@ -217,7 +220,7 @@ func (rb *Runbook) Play(ctx context.Context, name string) error {
 		if num := s.taskset.Len(); num > 0 {
 			log.Trace("Play stage %s[tasks=%d] held by %s",
 				name, num, arg.Owner)
-			return s.Play(ctx)
+			return s.play(ctx, w)
 		}
 		log.Warning("Stage %s held by %s has no tasks", name, arg.Owner)
 		return nil
@@ -232,6 +235,9 @@ func newStage(name string) *Stage {
 		name:    name,
 		taskset: newTaskSet(),
 	}
+
+	stage.ready[0] = make(chan struct{})
+	stage.ready[1] = make(chan struct{})
 
 	// init event listeners
 	stage.listeners.inout.Init()
@@ -324,26 +330,79 @@ func (s *Stage) Reset(ctx context.Context) {
 
 	s.m.Lock()
 	defer s.m.Unlock()
-	atomic.StoreUint32(&s.executed, 0)
+
+	isNative := arg.Get("ISNATIVE").(bool)
+	atomic.StoreUint32(&s.executed[index(isNative)], 0)
+}
+
+// AddDep add one dependent stage who are belong to another runbooks to current
+// stage.  dep format: runbookName[@stageName]
+func (s *Stage) AddDep(d string) *Stage {
+	s.m.Lock()
+	defer s.m.Unlock()
+
+	s.depends = append(s.depends, d)
+	return s
+}
+
+// Waiter is the interface to wait one dependent stage belong to another runbook finished
+type Waiter interface {
+	Wait(runbook, stage string, isNative bool) <-chan struct{}
+}
+
+func index(isNative bool) int {
+
+	index := 0
+	if isNative {
+		index = 1
+	}
+	return index
+}
+
+// Wait return channel for waiting this stage is finished
+func (s *Stage) Wait(isNative bool) <-chan struct{} {
+	return s.ready[index(isNative)]
 }
 
 // Play perform tasks in the stage
-func (s *Stage) Play(ctx context.Context) error {
-	if s.disabled {
-		return nil
-	}
+func (s *Stage) play(ctx context.Context, w Waiter) error {
 
-	if atomic.LoadUint32(&s.executed) == 1 {
+	arg := FromContext(ctx)
+	isNative := arg.Get("ISNATIVE").(bool)
+	executed := &s.executed[index(isNative)]
+
+	if atomic.LoadUint32(executed) == 1 {
 		return nil
 	}
 
 	s.m.Lock()
 	defer s.m.Unlock()
-	if s.executed == 0 {
+	defer close(s.ready[index(isNative)])
 
-		defer atomic.StoreUint32(&s.executed, 1)
+	if s.disabled {
+		return nil
+	}
 
-		arg := FromContext(ctx)
+	// wait its dependent stages belong to another rubooks are finished
+	for _, d := range s.depends {
+
+		runbook := d
+		stage := ""
+		if i := strings.LastIndex(d, "@"); i >= 0 {
+			runbook = d[:i]
+			stage = d[i+1:]
+		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-w.Wait(runbook, stage, isNative):
+		}
+	}
+
+	if *executed == 0 {
+
+		defer atomic.StoreUint32(executed, 1)
+
 		if handled, err := s.rangeIn(s.name, arg); handled || err != nil {
 			return err
 		}
