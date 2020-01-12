@@ -23,7 +23,6 @@ import (
 type taskCmd struct {
 	script  string // script file name or script string
 	routine string // entry routine of script
-	summary string // description summary
 }
 
 // TaskGoFunc prototype
@@ -32,8 +31,7 @@ type TaskGoFunc func(ctx context.Context, dir string) error
 
 // taskGo represent golang func task
 type taskGo struct {
-	f       TaskGoFunc
-	summary string // description summary
+	f TaskGoFunc
 }
 
 // TaskSet represent a collection of task
@@ -56,16 +54,10 @@ func (t *TaskSet) Len() int {
 	return len(t.set)
 }
 
-// Has return whether TaskSet has task
-func (t *TaskSet) Has(name string) bool {
-	_, ok := t.set[name]
-	return ok
-}
-
-// Add push one task to taskset. Return ErrTaskAdded if key exists
+// Add push one task to taskset
 // It supports two kind of task: TaskGoFunc & script. script is a script file name or string
 // if it's a script file, task runner will try to find it under FilesPath
-func (t *TaskSet) Add(key interface{}, task interface{}, summary string) {
+func (t *TaskSet) Add(key interface{}, task interface{}) {
 
 	v := task
 	if _, ok := t.set[key]; ok {
@@ -86,13 +78,13 @@ func (t *TaskSet) Add(key interface{}, task interface{}, summary string) {
 		if name, ok := key.(string); ok {
 			routine = name
 		}
-		v = taskCmd{routine: routine, script: kind, summary: summary}
+		v = taskCmd{routine: routine, script: kind}
 
 	case func(context.Context, string) error:
-		v = taskGo{f: TaskGoFunc(kind), summary: summary}
+		v = taskGo{f: TaskGoFunc(kind)}
 
 	case TaskGoFunc:
-		v = taskGo{f: kind, summary: summary}
+		v = taskGo{f: kind}
 
 	default:
 		b := strings.Builder{}
@@ -210,4 +202,34 @@ func (tc *taskCmd) run(ctx context.Context, dir string) error {
 	}
 
 	return command.Run(tc.routine)
+}
+
+// TaskForce is just a wrapper of TaskSet with dependency
+type TaskForce struct {
+	taskset *TaskSet
+	summary string
+	depends []string // dep format: runbookName[@stageName]
+}
+
+func newTaskForce(name, summry string) *TaskForce {
+	tf := new(TaskForce)
+	tf.taskset = newTaskSet()
+	tf.summary = summry
+	return tf
+}
+
+// setTask assign one task to TaskForce
+// It supports two kind of task: TaskGoFunc & script. script is a script file
+// name or string. if it's a script file, task runner will try to find it under
+// FilesPath
+func (tf *TaskForce) setTask(task interface{}) *TaskForce {
+	tf.taskset.Add(0, task)
+	return tf
+}
+
+// AddDep add one dependent stage who are belong to another runbooks to current
+// TaskForce.  dep format: runbookName[@stageName]
+func (tf *TaskForce) AddDep(d string) *TaskForce {
+	tf.depends = append(tf.depends, d)
+	return tf
 }

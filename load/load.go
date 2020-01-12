@@ -267,12 +267,11 @@ func (l *Load) setupRunbook(c carton.Builder) {
 		})
 	}
 
-	tset := rb.TaskSet()
-	tset.Add("cleanall", cleanall,
+	rb.NewTaskForce("cleanall", cleanall,
 		"Remove all intermediate stuff")
-	tset.Add("printenv", printenv,
+	rb.NewTaskForce("printenv", printenv,
 		"Show global and per carton context variables")
-	tset.Add("cleanstate", cleanstate,
+	rb.NewTaskForce("cleanstate", cleanstate,
 		"Clean state cache of all stages")
 
 	addEventListener(rb)
@@ -385,7 +384,7 @@ func (l *Load) Run(carton, target string, nodeps, force bool) error {
 	}
 
 	rb := c.Runbook()
-	if rb.TaskSet().Has(target) {
+	if rb.HasTaskForce(target) {
 		nodeps = true
 	}
 

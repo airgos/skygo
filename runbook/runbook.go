@@ -19,9 +19,7 @@ import (
 
 // Error used by Runbook
 var (
-	ErrTaskAdded       = errors.New("Task Added")
 	ErrUnknownTaskType = errors.New("Unkown Task Type")
-	ErrNilStage        = errors.New("Nil Stage")
 	ErrUnknownTask     = errors.New("Unkown Task")
 )
 
@@ -30,11 +28,10 @@ type Runbook struct {
 	head *list.List
 
 	// inherits event listeners
-	// it's for independent TaskSet
+	// it's for TaskForce
 	listeners
 
-	//independent TaskSet
-	taskset *TaskSet
+	taskForce map[string]*TaskForce
 }
 
 // Stage is member of Runbook, and hold a set of tasks with differnt weight.
@@ -63,7 +60,7 @@ type Stage struct {
 func NewRunbook() *Runbook {
 	this := new(Runbook)
 	this.head = list.New()
-	this.taskset = newTaskSet()
+	this.taskForce = make(map[string]*TaskForce)
 	this.listeners.inout.Init()
 	this.listeners.reset.Init()
 	return this
@@ -94,18 +91,11 @@ func (rb *Runbook) String() string {
 		}
 	}
 
-	fmt.Fprintf(&s, "\nIndependent Tasks\n")
-	for key := range rb.taskset.set {
-		if name, ok := key.(string); ok {
-			switch task := rb.taskset.set[key].(type) {
-			case taskGo:
-				fmt.Fprintf(&s, "%10s: %s\n", name, task.summary)
-			case taskCmd:
-				fmt.Fprintf(&s, "%10s: %s\n", name, task.summary)
-			}
-		}
-
+	fmt.Fprintf(&s, "\nTask Force\n")
+	for name, tf := range rb.taskForce {
+		fmt.Fprintf(&s, "%10s: %s\n", name, tf.summary)
 	}
+
 	return s.String()
 }
 
@@ -153,32 +143,65 @@ func (rb *Runbook) Head() *Stage {
 	return nil
 }
 
-// TaskSet given indelete takset owned by runbook
-func (rb *Runbook) TaskSet() *TaskSet {
-	return rb.taskset
+// NewTaskForce new task force
+// it supports two kind of task: TaskGoFunc & script. script is a script file
+// name or string. if it's a script file, task runner will try to find it under
+// FilesPath
+func (rb *Runbook) NewTaskForce(name string, task interface{}, summary string) *TaskForce {
+	tf := newTaskForce(name, summary)
+	tf.setTask(task)
+	rb.taskForce[name] = tf
+	return tf
 }
 
-// RunTask play one task in dependent taskset
-func (rb *Runbook) RunTask(ctx context.Context, name string) error {
+// HasTaskForce return whether runbook has task force @name
+func (rb *Runbook) HasTaskForce(name string) bool {
 
-	if !rb.taskset.Has(name) {
-		return fmt.Errorf("Runbook has no independent task %s", name)
+	_, ok := rb.taskForce[name]
+	return ok
+}
+
+// runTaskForce run task in task force
+func (rb *Runbook) runTaskForce(ctx context.Context, name string, w Waiter) error {
+
+	tf, ok := rb.taskForce[name]
+	if !ok {
+		return fmt.Errorf("Runbook has no task force %s", name)
 	}
 
-	log.Trace("Run independent task: %s", name)
 	arg := FromContext(ctx)
+	isNative := arg.Get("ISNATIVE").(bool)
+
+	// wait its dependent stages belong to another rubooks are finished
+	for _, d := range tf.depends {
+
+		runbook := d
+		stage := ""
+		if i := strings.LastIndex(d, "@"); i >= 0 {
+			runbook = d[:i]
+			stage = d[i+1:]
+		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-w.Wait(runbook, stage, isNative):
+		}
+	}
+
+	log.Trace("Run task force: %s", name)
 	if handled, err := rb.rangeIn(name, arg); handled || err != nil {
 		return err
 	}
 
 	// if taskset's dir is empty, try to use S
-	if rb.taskset.Dir == "" {
+	if tf.taskset.Dir == "" {
 		if dir, ok := arg.LookupVar("S"); ok {
-			rb.taskset.Dir = dir
+			tf.taskset.Dir = dir
 		}
 	}
 
-	if err := rb.taskset.runtask(ctx, name); err != nil {
+	// TaskForce only have one task
+	if err := tf.taskset.runtask(ctx, 0); err != nil {
 		return err
 	}
 	return rb.rangeOut(name, arg)
@@ -226,7 +249,7 @@ func (rb *Runbook) Play(ctx context.Context, name string, w Waiter) error {
 		return nil
 	}
 	log.Trace("Run independent task %s held by %s", name, arg.Owner)
-	return rb.RunTask(ctx, name)
+	return rb.runTaskForce(ctx, name, w)
 }
 
 func newStage(name string) *Stage {
@@ -308,7 +331,7 @@ func (s *Stage) Next() *Stage {
 // AddTask add one task with weight to stage's taskset
 func (s *Stage) AddTask(weight int, task interface{}) *Stage {
 
-	s.taskset.Add(weight, task, "")
+	s.taskset.Add(weight, task)
 	return s
 }
 
