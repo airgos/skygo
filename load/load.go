@@ -167,7 +167,7 @@ func (l *Load) SetOutput(index int, stdout, stderr io.Writer) *Load {
 }
 
 func (l *Load) perform(c carton.Builder, target string,
-	nodeps bool, isNative bool) (err error) {
+	isNative bool) (err error) {
 
 	y, err := l.pool.Get(l.ctx)
 	if err != nil {
@@ -177,9 +177,6 @@ func (l *Load) perform(c carton.Builder, target string,
 	x := y.(*pool)
 
 	l.setupArg(c, x.arg, isNative)
-	if nodeps {
-		x.arg.SetUnderOutput(os.Stdout, os.Stderr)
-	}
 
 	timeout, _ := x.arg.LookupVar("TIMEOUT")
 	timeOut, _ := strconv.Atoi(timeout)
@@ -196,10 +193,10 @@ func (l *Load) perform(c carton.Builder, target string,
 	os.MkdirAll(x.arg.GetVar("D"), 0755)
 	os.MkdirAll(x.arg.GetVar("PKGD"), 0755)
 
-	if nodeps && target != "" {
+	if target != "" {
 		err = c.Runbook().Play(ctx, target, l)
 	} else {
-		err = c.Runbook().Range(ctx, target, l)
+		err = c.Runbook().Range(ctx, l)
 	}
 
 	if err != nil {
@@ -343,35 +340,57 @@ func (l *Load) Wait(runbook, stage string, isNative bool) <-chan struct{} {
 	return c.Runbook().Stage(stage).Wait(isNative)
 }
 
-func (l *Load) run(c carton.Builder, target string, nodeps, isNative bool) {
+func (l *Load) run(c carton.Builder, isNative bool) {
 
 	wait := func(deps []string) {
-		for _, d := range deps {
+		for _, carton := range deps {
 
-			carton := d
-			if i := strings.LastIndex(d, "@"); i >= 0 {
-				carton = d[:i]
-				if target == "" {
-					target = d[i+1:]
-				}
-			}
-
-			<-l.Wait(carton, target, isNative)
+			<-l.Wait(carton, "", isNative)
 		}
 	}
 
-	if !nodeps {
-		wait(c.BuildDepends())
-		wait(c.Depends())
-	}
+	wait(c.BuildDepends())
+	wait(c.Depends())
 
-	if err := l.perform(c, target, nodeps, isNative); err != nil {
+	if err := l.perform(c, "", isNative); err != nil {
 		l.cancel()
 		return
 	}
 
 	l.loaded[index(isNative)].LoadOrStore(c.Provider(), struct{}{})
 	l.refPut(func() { close(l.loadCh) })
+}
+
+func (l *Load) start(c carton.Builder, target string, nodeps, isNative bool) {
+
+	rb := c.Runbook()
+	if rb.HasTaskForce(target) {
+		nodeps = true
+	}
+
+	wait := func(deps []string) {
+		for _, carton := range deps {
+
+			<-l.Wait(carton, "", isNative)
+		}
+	}
+
+	l.refGet()
+	go func() {
+
+		if !nodeps {
+			wait(c.BuildDepends())
+			wait(c.Depends())
+		}
+
+		if err := l.perform(c, target, isNative); err != nil {
+			l.cancel()
+			return
+		}
+
+		l.loaded[index(isNative)].LoadOrStore(c.Provider(), struct{}{})
+		l.refPut(func() { close(l.loadCh) })
+	}()
 }
 
 func (l *Load) Run(carton, target string, nodeps, force bool) error {
@@ -383,21 +402,16 @@ func (l *Load) Run(carton, target string, nodeps, force bool) error {
 		return err
 	}
 
-	rb := c.Runbook()
-	if rb.HasTaskForce(target) {
-		nodeps = true
-	}
-
 	if force {
 		t := tempDir(c, isNative)
-		cleanstate1(rb, target, t)
+		cleanstate1(c.Runbook(), target, t)
 	}
 
-	l.refGet()
-	go l.run(c, target, nodeps, isNative)
+	l.start(c, target, nodeps, isNative)
 
+	// run & wait done
 	for meta := range l.loadCh {
-		go l.run(meta.carton, target, false, meta.isNative)
+		go l.run(meta.carton, meta.isNative)
 	}
 
 	if l.err.err != nil {

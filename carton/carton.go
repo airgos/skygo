@@ -160,8 +160,8 @@ func (c *Carton) From(file ...string) []string {
 }
 
 // BuildDepends add depends only required for building from scratch
-// dep format: cartonName[@stageName] or carton group
-// carton group is a collection of cartonName[@stageName] with delimiter space
+// dep format: cartonName or carton group
+// carton group is a collection of cartonName with delimiter space
 // Always return the same kind of depends
 func (c *Carton) BuildDepends(deps ...string) []string {
 
@@ -177,8 +177,8 @@ func (c *Carton) BuildDepends(deps ...string) []string {
 }
 
 // Depends add depends required for building from scratch, running or both
-// dep format: cartonName[@stageName] or carton group
-// carton group is a collection of cartonName[@stageName] with delimiter space
+// dep format: cartonName or carton group
+// carton group is a collection of cartonName with delimiter space
 // Always return the same kind of depends
 func (c *Carton) Depends(deps ...string) []string {
 

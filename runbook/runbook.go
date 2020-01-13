@@ -209,14 +209,9 @@ func (rb *Runbook) runTaskForce(ctx context.Context, name string, w Waiter) erro
 
 // Range iterates all stages and execute Play in the runbook
 // Abort if any stage failed
-// After invoking Play, abort if current stage is @name
-func (rb *Runbook) Range(ctx context.Context, name string, w Waiter) error {
+func (rb *Runbook) Range(ctx context.Context, w Waiter) error {
 
 	arg := FromContext(ctx)
-	if name != "" && rb.Stage(name) == nil {
-		return fmt.Errorf("%s has no stage %s", arg.Owner, name)
-	}
-
 	log.Trace("Range stages held by %s", arg.Owner)
 	for stage := rb.Head(); stage != nil; stage = stage.Next() {
 		if stage.taskset.Len() > 0 {
@@ -224,10 +219,6 @@ func (rb *Runbook) Range(ctx context.Context, name string, w Waiter) error {
 			err := stage.play(ctx, w)
 			if err != nil {
 				return err
-			}
-
-			if stage.name == name {
-				return nil
 			}
 		}
 	}
@@ -499,7 +490,7 @@ func (arg *Arg) Output() (stdout, stderr io.Writer) {
 	return arg.stdout, arg.stderr
 }
 
-// UnderOutput return IO stdout & stderr
+// UnderOutput return underline IO stdout & stderr
 func (arg *Arg) UnderOutput() (stdout, stderr io.Writer) {
 	return arg.stdout, arg.stderr
 }

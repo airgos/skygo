@@ -26,7 +26,7 @@ type Modifier interface {
 	SetSrcDir(dir string) error
 
 	// used to update dependency
-	// dep format: cartonName[@stageName] or carton group
+	// dep format: cartonName or carton group
 	Depends(dep ...string) []string
 	BuildDepends(dep ...string) []string
 
@@ -54,14 +54,14 @@ type Builder interface {
 	From(file ...string) []string
 
 	// BuildDepends add depends only required for building from scratch
-	// dep format: cartonName[@stageName] or carton group
-	// carton group is a collection of cartonName[@stageName] with delimiter space
+	// dep format: cartonName or carton group
+	// carton group is a collection of cartonName with delimiter space
 	// Always return the same kind of depends
 	BuildDepends(...string) []string
 
 	// Depends add depends required for building from scratch, running or both
-	// dep format: cartonName[@stageName] or carton group
-	// carton group is a collection of cartonName[@stageName] with delimiter space
+	// dep format: cartonName or carton group
+	// carton group is a collection of cartonName with delimiter space
 	// Always return the same kind of depends
 	Depends(...string) []string
 
