@@ -375,7 +375,13 @@ func index(isNative bool) int {
 
 // Wait return channel for waiting this stage is finished
 func (s *Stage) Wait(isNative bool) <-chan struct{} {
-	return s.ready[index(isNative)]
+
+	ch := s.ready[index(isNative)]
+	if s.disabled || 0 == s.taskset.Len() {
+		close(ch)
+	}
+
+	return ch
 }
 
 // Play perform tasks in the stage
