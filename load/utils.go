@@ -74,23 +74,23 @@ func tempDir(c carton.Builder, isNative bool) string {
 	return filepath.Join(wd, "temp")
 }
 
-func isStagePlayed(stage string, tempDir string) bool {
+func isStagePlayed(carton, stage string, tempDir string) bool {
 
 	done := filepath.Join(tempDir, stage+".done")
 
 	if utils.IsExist(done) {
-		log.Trace("%s had been played. Skip it!", stage)
+		log.Trace("%s's stage %s had been played. Skip it!", carton, stage)
 		return true
 	}
 	return false
 }
 
-func markStagePlayed(stage string, tempDir string, played bool) {
+func markStagePlayed(carton, stage string, tempDir string, played bool) {
 
 	done := filepath.Join(tempDir, stage+".done")
 	if played {
 		if _, err := os.Create(done); err == nil {
-			log.Trace("Mark stage %s to be executed", stage)
+			log.Trace("Mark %s's stage %s to be executed", carton, stage)
 		}
 		return
 	}

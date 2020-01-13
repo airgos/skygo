@@ -269,7 +269,7 @@ func (l *Load) setupRunbook(c carton.Builder) {
 	rb.NewTaskForce("printenv", printenv,
 		"Show global and per carton context variables")
 	rb.NewTaskForce("cleanstate", cleanstate,
-		"Clean state cache of all stages")
+		"Clean state cache of all stages, same as flag --force")
 
 	addEventListener(rb)
 }
@@ -404,7 +404,7 @@ func (l *Load) Run(carton, target string, nodeps, force bool) error {
 
 	if force {
 		t := tempDir(c, isNative)
-		cleanstate1(c.Runbook(), target, t)
+		cleanstate1(c, target, t)
 	}
 
 	l.start(c, target, nodeps, isNative)

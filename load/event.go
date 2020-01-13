@@ -68,18 +68,18 @@ func logfileEnter(stage string, arg *runbook.Arg) (bool, interface{}, error) {
 
 func stageSetDone(stage string, arg *runbook.Arg, x interface{}) error {
 
-	markStagePlayed(stage, arg.GetVar("T"), true)
+	markStagePlayed(arg.Owner, stage, arg.GetVar("T"), true)
 	return nil
 }
 
 func stageStatus(stage string, arg *runbook.Arg) (bool, interface{}, error) {
 
-	return isStagePlayed(stage, arg.GetVar("T")), nil, nil
+	return isStagePlayed(arg.Owner, stage, arg.GetVar("T")), nil, nil
 }
 
 func stageReset(stage string, arg *runbook.Arg) error {
 
-	markStagePlayed(stage, arg.GetVar("T"), false)
+	markStagePlayed(arg.Owner, stage, arg.GetVar("T"), false)
 	return nil
 }
 

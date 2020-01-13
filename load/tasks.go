@@ -38,18 +38,18 @@ func cleanstate(ctx context.Context, dir string) error {
 
 	arg := runbook.FromContext(ctx)
 	c := arg.Private.(carton.Builder)
-	rb := c.Runbook()
-	cleanstate1(rb, "", arg.GetVar("T"))
+	cleanstate1(c, "", arg.GetVar("T"))
 	return nil
 }
 
-func cleanstate1(rb *runbook.Runbook, target, tempDir string) {
+func cleanstate1(c carton.Builder, target, tempDir string) {
 
+	carton := c.Provider()
 	if target != "" {
-		markStagePlayed(target, tempDir, false)
+		markStagePlayed(carton, target, tempDir, false)
 	} else {
-		for stage := rb.Head(); stage != nil; stage = stage.Next() {
-			markStagePlayed(stage.Name(), tempDir, false)
+		for stage := c.Runbook().Head(); stage != nil; stage = stage.Next() {
+			markStagePlayed(carton, stage.Name(), tempDir, false)
 		}
 	}
 }
