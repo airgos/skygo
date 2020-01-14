@@ -23,7 +23,7 @@ var (
 	ErrUnknownTask     = errors.New("Unkown Task")
 )
 
-// Runbook consists of a series of stage and a independent taskset
+// Runbook consists of a series of stage and a task force
 type Runbook struct {
 	head *list.List
 
@@ -66,7 +66,7 @@ func NewRunbook() *Runbook {
 	return this
 }
 
-// String output information stages and independent tasks
+// String output information stages and task force
 func (rb *Runbook) String() string {
 
 	var s strings.Builder
@@ -164,12 +164,12 @@ func (rb *Runbook) HasTaskForce(name string) bool {
 // runTaskForce run task in task force
 func (rb *Runbook) runTaskForce(ctx context.Context, name string, w Waiter) error {
 
+	arg := FromContext(ctx)
 	tf, ok := rb.taskForce[name]
 	if !ok {
-		return fmt.Errorf("Runbook has no task force %s", name)
+		return fmt.Errorf("%s has no task force %s", arg.Owner, name)
 	}
 
-	arg := FromContext(ctx)
 	isNative := arg.Get("ISNATIVE").(bool)
 
 	// wait its dependent stages belong to another rubooks are finished
@@ -188,7 +188,7 @@ func (rb *Runbook) runTaskForce(ctx context.Context, name string, w Waiter) erro
 		}
 	}
 
-	log.Trace("Run task force: %s", name)
+	log.Trace("Run task force owned by %s: %s", arg.Owner, name)
 	if handled, err := rb.rangeIn(name, arg); handled || err != nil {
 		return err
 	}
@@ -225,7 +225,7 @@ func (rb *Runbook) Range(ctx context.Context, w Waiter) error {
 	return nil
 }
 
-// Play run stage's tasks or the independent task
+// Play run stage's tasks or the task force
 func (rb *Runbook) Play(ctx context.Context, name string, w Waiter) error {
 
 	arg := FromContext(ctx)
@@ -239,7 +239,6 @@ func (rb *Runbook) Play(ctx context.Context, name string, w Waiter) error {
 		log.Warning("Stage %s held by %s has no tasks", name, arg.Owner)
 		return nil
 	}
-	log.Trace("Run independent task %s held by %s", name, arg.Owner)
 	return rb.runTaskForce(ctx, name, w)
 }
 
