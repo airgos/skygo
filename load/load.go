@@ -193,13 +193,7 @@ func (l *Load) perform(c carton.Builder, target string,
 	os.MkdirAll(x.arg.GetVar("D"), 0755)
 	os.MkdirAll(x.arg.GetVar("PKGD"), 0755)
 
-	if target != "" {
-		err = c.Runbook().Play(ctx, target, l)
-	} else {
-		err = c.Runbook().Range(ctx, l)
-	}
-
-	if err != nil {
+	if err = c.Runbook().Play(ctx, target, l); err != nil {
 		l.once.Do(func() {
 			l.err = loadError{
 				carton: x.arg.Owner,

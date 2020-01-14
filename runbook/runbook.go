@@ -165,13 +165,9 @@ func (rb *Runbook) HasTaskForce(name string) bool {
 func (rb *Runbook) runTaskForce(ctx context.Context, name string, w Waiter) error {
 
 	arg := FromContext(ctx)
-	tf, ok := rb.taskForce[name]
-	if !ok {
-		return fmt.Errorf("%s has no task force %s", arg.Owner, name)
-	}
-
 	isNative := arg.Get("ISNATIVE").(bool)
 
+	tf := rb.taskForce[name]
 	// wait its dependent stages belong to another rubooks are finished
 	for _, d := range tf.depends {
 
@@ -207,39 +203,37 @@ func (rb *Runbook) runTaskForce(ctx context.Context, name string, w Waiter) erro
 	return rb.rangeOut(name, arg)
 }
 
-// Range iterates all stages and execute Play in the runbook
-// Abort if any stage failed
-func (rb *Runbook) Range(ctx context.Context, w Waiter) error {
+// Play run task force or iterates stages until stage @name
+// if @name is emptry, it will iterates all stages
+func (rb *Runbook) Play(ctx context.Context, name string, w Waiter) error {
 
 	arg := FromContext(ctx)
+
+	if rb.HasTaskForce(name) {
+		return rb.runTaskForce(ctx, name, w)
+	}
+
+	if name != "" && nil == rb.Stage(name) {
+		return fmt.Errorf("%s has no stage or task force %s", arg.Owner, name)
+	}
+
 	log.Trace("Range stages held by %s", arg.Owner)
 	for stage := rb.Head(); stage != nil; stage = stage.Next() {
-		if stage.taskset.Len() > 0 {
+
+		if num := stage.taskset.Len(); num > 0 {
+			log.Trace("Play stage %s[tasks=%d] held by %s",
+				name, num, arg.Owner)
 
 			err := stage.play(ctx, w)
 			if err != nil {
 				return err
 			}
+			if stage.name == name {
+				return nil
+			}
 		}
 	}
 	return nil
-}
-
-// Play run stage's tasks or the task force
-func (rb *Runbook) Play(ctx context.Context, name string, w Waiter) error {
-
-	arg := FromContext(ctx)
-
-	if s := rb.Stage(name); s != nil {
-		if num := s.taskset.Len(); num > 0 {
-			log.Trace("Play stage %s[tasks=%d] held by %s",
-				name, num, arg.Owner)
-			return s.play(ctx, w)
-		}
-		log.Warning("Stage %s held by %s has no tasks", name, arg.Owner)
-		return nil
-	}
-	return rb.runTaskForce(ctx, name, w)
 }
 
 func newStage(name string) *Stage {
