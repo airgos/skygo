@@ -6,7 +6,6 @@ package load
 
 import (
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 
@@ -35,81 +34,70 @@ func addEventListener(rb *runbook.Runbook) {
 	rb.PushInOut(cleanTask, nil)
 }
 
-func logfileExit(name string, arg *runbook.Arg, x interface{}) error {
+func logfileExit(ctx runbook.Context, name string, x interface{}) error {
 	file := x.(*os.File)
 	file.Close()
 	return nil
 }
 
-func logfileEnter(stage string, arg *runbook.Arg) (bool, interface{}, error) {
+func logfileEnter(ctx runbook.Context, stage string) (bool, interface{}, error) {
 
-	logfile := filepath.Join(arg.GetStr("T"), stage+".log")
+	logfile := filepath.Join(ctx.GetStr("T"), stage+".log")
 	file, err := os.Create(logfile)
 	if err != nil {
 		return false, nil, fmt.Errorf("Failed to create %s", logfile)
 	}
 
-	arg.Writer = func() (io.Writer, io.Writer) {
-		stdout, stderr := arg.UnderOutput()
-		if stdout != nil {
-			stdout = io.MultiWriter(stdout, file)
-		} else {
-			stdout = file
-		}
-		if stderr != nil {
-			stderr = io.MultiWriter(stderr, file)
-		} else {
-			stderr = file
-		}
-		return stdout, stderr
-	}
+	ctx.Set("STDOUT", file)
+
 	return false, file, nil
 }
 
-func stageSetDone(stage string, arg *runbook.Arg, x interface{}) error {
+func stageSetDone(ctx runbook.Context, stage string, x interface{}) error {
 
-	markStagePlayed(arg.Owner, stage, arg.GetStr("T"), true)
+	markStagePlayed(ctx.Owner(), stage, ctx.GetStr("T"), true)
 	return nil
 }
 
-func stageStatus(stage string, arg *runbook.Arg) (bool, interface{}, error) {
+func stageStatus(ctx runbook.Context, stage string) (bool, interface{}, error) {
 
-	return isStagePlayed(arg.Owner, stage, arg.GetStr("T")), nil, nil
+	return isStagePlayed(ctx.Owner(), stage, ctx.GetStr("T")), nil, nil
 }
 
-func stageReset(stage string, arg *runbook.Arg) error {
+func stageReset(ctx runbook.Context, stage string) error {
 
-	markStagePlayed(arg.Owner, stage, arg.GetStr("T"), false)
+	markStagePlayed(ctx.Owner(), stage, ctx.GetStr("T"), false)
 	return nil
 }
 
-func cleanTask(task string, arg *runbook.Arg) (bool, interface{}, error) {
+func cleanTask(ctx runbook.Context, task string) (bool, interface{}, error) {
 	if task == "clean" {
-		os.RemoveAll(arg.GetStr("T"))
+		os.RemoveAll(ctx.GetStr("T"))
 
 		// only run clean task if S does exist
-		dir, ok := arg.LookupVar("S")
-		if !ok {
+		dir := ctx.Get("S")
+		if dir == nil {
 			return true, nil, nil
 		}
 
-		if !utils.IsExist(dir) {
+		if !utils.IsExist(dir.(string)) {
 			return true, nil, nil
 		}
 	}
 	return false, nil, nil
 }
 
-func tryToSetVarS(stage string, arg *runbook.Arg, x interface{}) error {
-	if _, ok := arg.LookupVar("S"); ok {
+func tryToSetVarS(ctx runbook.Context, stage string, x interface{}) error {
+	if nil != ctx.Get("S") {
 		return nil
 	}
 
-	c := arg.Private.(carton.Builder)
-	if dir := c.SrcDir(arg.GetStr("WORKDIR")); dir == "" {
+	// TODO: remove Private
+	c := ctx.Private().(carton.Builder)
+	if dir := c.SrcDir(ctx.GetStr("WORKDIR")); dir == "" {
 		return fmt.Errorf("Failed to find SrcDir automatically! Please set it explicitily by SetSrcDir.")
 	} else {
-		arg.Set("S", dir)
+		ctx.Set("S", dir)
 	}
 	return nil
 }

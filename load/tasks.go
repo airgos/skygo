@@ -5,7 +5,6 @@
 package load
 
 import (
-	"context"
 	"fmt"
 	"os"
 
@@ -14,31 +13,28 @@ import (
 	"skygo/utils/log"
 )
 
-func cleanall(ctx context.Context, dir string) error {
+func cleanall(ctx runbook.Context, dir string) error {
 
-	arg := runbook.FromContext(ctx)
-	wd := arg.GetStr("WORKDIR")
+	wd := ctx.GetStr("WORKDIR")
 
 	os.RemoveAll(wd)
 	log.Trace("Remove working dir %s", wd)
 	return nil
 }
 
-func printenv(ctx context.Context, dir string) error {
+func printenv(ctx runbook.Context, dir string) error {
 
-	arg := runbook.FromContext(ctx)
 	fmt.Println()
-	arg.Range(func(k, v string) {
+	ctx.Range(func(k, v string) {
 		fmt.Printf("%12s:\t%s\n", k, v)
 	})
 	return nil
 }
 
-func cleanstate(ctx context.Context, dir string) error {
+func cleanstate(ctx runbook.Context, dir string) error {
 
-	arg := runbook.FromContext(ctx)
-	c := arg.Private.(carton.Builder)
-	cleanstate1(c, "", arg.GetStr("T"))
+	c := ctx.Private().(carton.Builder)
+	cleanstate1(c, "", ctx.GetStr("T"))
 	return nil
 }
 

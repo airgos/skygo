@@ -25,18 +25,17 @@ type fileSync struct {
 	from, to string
 }
 
-func file(ctx context.Context, url string, notify func(bool)) error {
+func file(ctx runbook.Context, url string, notify func(bool)) error {
 
-	arg := runbook.FromContext(ctx)
-	stdout, _ := arg.Output()
+	stdout, _ := ctx.Output()
 
 	url = url[7:]
-	for _, u := range arg.FilesPath {
+	for _, u := range ctx.FilesPath() {
 
 		root := filepath.Join(u, url)
 		if utils.IsExist(root) {
 
-			g, ctx := xsync.WithContext(ctx)
+			g, stdCtx := xsync.WithContext(ctx.Ctx())
 			paths := make(chan fileSync)
 
 			g.Go(func() error {
@@ -48,7 +47,7 @@ func file(ctx context.Context, url string, notify func(bool)) error {
 					}
 
 					rel := strings.TrimPrefix(path, u)                  // remove prefix dir of FilesPath
-					target := filepath.Join(arg.GetStr("WORKDIR"), rel) // full target path
+					target := filepath.Join(ctx.GetStr("WORKDIR"), rel) // full target path
 
 					if info.IsDir() {
 						return os.MkdirAll(target, 0755)
@@ -61,8 +60,8 @@ func file(ctx context.Context, url string, notify func(bool)) error {
 							from: path,
 							to:   target,
 						}:
-						case <-ctx.Done():
-							return ctx.Err()
+						case <-stdCtx.Done():
+							return stdCtx.Err()
 						}
 						return nil
 					} else {
@@ -78,7 +77,7 @@ func file(ctx context.Context, url string, notify func(bool)) error {
 			for i := 0; i < runtime.NumCPU(); i++ {
 				g.Go(func() error {
 					for files := range paths {
-						updated, err := copyFile(ctx, files.to, files.from, stdout)
+						updated, err := copyFile(ctx.Ctx(), files.to, files.from, stdout)
 						if err != nil {
 							return err
 						}

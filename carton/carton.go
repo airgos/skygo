@@ -6,7 +6,6 @@
 package carton
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -76,10 +75,10 @@ func NewCarton(name string, m func(c *Carton)) {
 		rb.PushFront(SYSROOT).Summary("Prepares sysroot to build carton")
 
 		fetch := rb.PushBack(FETCH).Summary("Fetchs the source code and extract")
-		fetch.AddTask(0, func(ctx context.Context, dir string) error {
+		fetch.AddTask(0, func(ctx runbook.Context, dir string) error {
 			return c.fetch.Download(ctx,
 				// reset subsequent stages
-				func(ctx context.Context) {
+				func(ctx runbook.Context) {
 					log.Trace("Reset subsequent stages because fetch found new code")
 					for stage := fetch.Next(); stage != nil; stage = stage.Next() {
 						stage.Reset(ctx)
@@ -92,9 +91,8 @@ func NewCarton(name string, m func(c *Carton)) {
 			InsertAfter(BUILD).Summary("Compiles the source in the compilation directory").
 			InsertAfter(INSTALL).Summary("Installs files from the compilation directory").
 			InsertAfter(PACKAGE).Summary("Packages files from the installation directory").
-			AddTask(0, func(ctx context.Context, dir string) error {
-				arg := runbook.FromContext(ctx)
-				return c.Package(arg.GetStr("D"), arg.GetStr("PKGD"))
+			AddTask(0, func(ctx runbook.Context, dir string) error {
+				return c.Package(ctx.GetStr("D"), ctx.GetStr("PKGD"))
 			})
 
 		c.runbook = rb

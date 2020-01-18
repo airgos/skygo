@@ -5,7 +5,6 @@
 package load
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -35,11 +34,9 @@ git apply $PATCHFILE && {
 `
 
 // patch search patch/diff files under WorkPath, sort, then apply
-func patch(ctx context.Context, dir string) error {
+func patch(ctx runbook.Context, dir string) error {
 
-	arg := runbook.FromContext(ctx)
-
-	file, e := os.Open(arg.GetStr("WORKDIR"))
+	file, e := os.Open(ctx.GetStr("WORKDIR"))
 	if e != nil {
 		return nil
 	}
@@ -51,7 +48,7 @@ func patch(ctx context.Context, dir string) error {
 
 	for _, fpath := range fpaths {
 		select {
-		case <-ctx.Done():
+		case <-ctx.Ctx().Done():
 		default:
 
 			if strings.HasSuffix(fpath, ".diff") || strings.HasSuffix(fpath, ".patch") {
@@ -60,9 +57,9 @@ func patch(ctx context.Context, dir string) error {
 				command := runbook.NewCommand(ctx, "/bin/bash", "-c", patchcmd)
 				command.Cmd.Dir = dir
 
-				patch := filepath.Join(arg.GetStr("WORKDIR"), fpath)
+				patch := filepath.Join(ctx.GetStr("WORKDIR"), fpath)
 				command.Cmd.Env = append(command.Cmd.Env, fmt.Sprintf("PATCHFILE=%s\n", patch))
-				if e := command.Run("patch"); e != nil {
+				if e := command.Run(ctx, "patch"); e != nil {
 					return e
 				}
 			}

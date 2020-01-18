@@ -5,7 +5,6 @@
 package load
 
 import (
-	"context"
 	"path/filepath"
 
 	"skygo/carton"
@@ -41,15 +40,14 @@ func walk(c carton.Builder, isNative bool, tree map[string]cartonRequired) {
 }
 
 // it does not care value of dir
-func prepare_sysroot(ctx context.Context, dir string) error {
+func prepare_sysroot(ctx runbook.Context, dir string) error {
 
-	arg := runbook.FromContext(ctx)
-	carton := arg.Private.(carton.Builder)
-	isNative := arg.Get("ISNATIVE").(bool)
+	carton := ctx.Private().(carton.Builder)
+	isNative := ctx.Get("ISNATIVE").(bool)
 
-	dest := filepath.Join(arg.GetStr("WORKDIR"), "sysroot")
+	dest := filepath.Join(ctx.GetStr("WORKDIR"), "sysroot")
 
-	g, ctx := xsync.WithContext(ctx)
+	g, _ := xsync.WithContext(ctx.Ctx())
 	for _, d := range depTree(carton, isNative) {
 
 		d := d

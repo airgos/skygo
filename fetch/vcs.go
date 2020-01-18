@@ -6,7 +6,6 @@ package fetch
 
 import (
 	"bytes"
-	"context"
 	"io"
 	"os"
 	"path/filepath"
@@ -22,7 +21,6 @@ import (
 type vcsCmd struct {
 	cmd string
 	dir string
-	ctx context.Context
 	env map[string]string
 
 	index string
@@ -93,7 +91,7 @@ func byRepo(repo, tag string) *vcsCmd {
 	return vcs
 }
 
-func (vcs *vcsCmd) run(dir, cmdline string) ([]byte, error) {
+func (vcs *vcsCmd) run(ctx runbook.Context, dir, cmdline string) ([]byte, error) {
 
 	var buf bytes.Buffer
 	args := strings.Fields(cmdline)
@@ -108,23 +106,22 @@ func (vcs *vcsCmd) run(dir, cmdline string) ([]byte, error) {
 	}
 
 	// fmt.Println(vcs.cmd, args)
-	command := runbook.NewCommand(vcs.ctx, vcs.cmd, args...)
+	command := runbook.NewCommand(ctx, vcs.cmd, args...)
 	command.Cmd.Dir = dir
 
-	arg := runbook.FromContext(vcs.ctx)
-	stdout, stderr := arg.Output()
+	stdout, stderr := ctx.Output()
 	command.Cmd.Stdout, command.Cmd.Stderr =
 		io.MultiWriter(stdout, &buf),
 		io.MultiWriter(stderr, &buf)
 
-	if e := command.Run("fetch"); e != nil {
+	if e := command.Run(ctx, "fetch"); e != nil {
 		return nil, e
 	}
 	return buf.Bytes(), nil
 }
 
 // look up repo, if not found, create it
-func (vcs *vcsCmd) lookupRepo(wd string) error {
+func (vcs *vcsCmd) lookupRepo(ctx runbook.Context) error {
 
 	path := vcs.repo
 	if i := strings.Index(vcs.repo, "//"); i >= 0 {
@@ -135,6 +132,7 @@ func (vcs *vcsCmd) lookupRepo(wd string) error {
 		path = path[:i]
 	}
 
+	wd := ctx.GetStr("WORKDIR")
 	vcs.dir = filepath.Join(wd, filepath.Base(path))
 	index := filepath.Join(vcs.dir, vcs.index)
 	dir := filepath.Dir(vcs.dir)
@@ -142,16 +140,16 @@ func (vcs *vcsCmd) lookupRepo(wd string) error {
 	// TODO: existence of .git can not make sure repo is ok
 	if !utils.IsExist(index) {
 		for _, cmd := range vcs.createCmd {
-			if _, e := vcs.run(dir, cmd); e != nil {
+			if _, e := vcs.run(ctx, dir, cmd); e != nil {
 				return e
 			}
 		}
 	} else {
 		// index is invalid, to create repo again
-		if _, err := vcs.run(vcs.dir, vcs.revCmd); err != nil {
+		if _, err := vcs.run(ctx, vcs.dir, vcs.revCmd); err != nil {
 			os.RemoveAll(vcs.dir)
 			for _, cmd := range vcs.createCmd {
-				if _, e := vcs.run(dir, cmd); e != nil {
+				if _, e := vcs.run(ctx, dir, cmd); e != nil {
 					return e
 				}
 			}
@@ -160,7 +158,7 @@ func (vcs *vcsCmd) lookupRepo(wd string) error {
 	return nil
 }
 
-func (vcs *vcsCmd) syncTag() error {
+func (vcs *vcsCmd) syncTag(ctx runbook.Context) error {
 
 	var tagSyncCmd []string
 
@@ -168,7 +166,7 @@ func (vcs *vcsCmd) syncTag() error {
 
 		tag := ""
 		for _, tc := range vcs.tagLookUpCmd {
-			out, e := vcs.run(vcs.dir, tc.cmd)
+			out, e := vcs.run(ctx, vcs.dir, tc.cmd)
 			if e != nil {
 				break
 			}
@@ -182,7 +180,7 @@ func (vcs *vcsCmd) syncTag() error {
 
 		// create pesudo tag
 		if tag == "" {
-			if _, e := vcs.run(vcs.dir, vcs.tagNewCmd); e != nil {
+			if _, e := vcs.run(ctx, vcs.dir, vcs.tagNewCmd); e != nil {
 				return e
 			}
 		}
@@ -194,19 +192,18 @@ func (vcs *vcsCmd) syncTag() error {
 	}
 
 	for _, cmd := range tagSyncCmd {
-		if _, e := vcs.run(vcs.dir, cmd); e != nil {
+		if _, e := vcs.run(ctx, vcs.dir, cmd); e != nil {
 			return e
 		}
 	}
 	return nil
 }
 
-func vcsFetch(ctx context.Context, url string,
+func vcsFetch(ctx runbook.Context, url string,
 	notify func(bool)) (err error) {
 
 	var rev1, rev2 []byte
 
-	arg := runbook.FromContext(ctx)
 	repo := url
 	tag := ""
 
@@ -215,23 +212,22 @@ func vcsFetch(ctx context.Context, url string,
 	}
 
 	vcs := byRepo(repo, tag)
-	vcs.ctx = ctx
 
-	if e := vcs.lookupRepo(arg.GetStr("WORKDIR")); e != nil {
+	if e := vcs.lookupRepo(ctx); e != nil {
 		return e
 	}
 
 	// get revision before syncTag
-	if rev1, err = vcs.run(vcs.dir, vcs.revCmd); err != nil {
+	if rev1, err = vcs.run(ctx, vcs.dir, vcs.revCmd); err != nil {
 		return err
 	}
 
-	if err = vcs.syncTag(); err != nil {
+	if err = vcs.syncTag(ctx); err != nil {
 		return err
 	}
 
 	// get revision after syncTag
-	if rev2, err = vcs.run(vcs.dir, vcs.revCmd); err != nil {
+	if rev2, err = vcs.run(ctx, vcs.dir, vcs.revCmd); err != nil {
 		return err
 	}
 

@@ -241,19 +241,20 @@ func (l *Load) setupArg(carton carton.Builder, arg *runbook.Arg,
 		arg.Set("S", dir)
 	}
 }
+*/
 
 func (l *Load) setupRunbook(c carton.Builder) {
 
 	rb := c.Runbook()
 
 	if s := rb.Stage(carton.PATCH); s != nil {
-		s.AddTask(0, func(ctx context.Context, dir string) error {
+		s.AddTask(0, func(ctx runbook.Context, dir string) error {
 			return patch(ctx, dir)
 		})
 	}
 
 	if s := rb.Stage(carton.SYSROOT); s != nil {
-		s.AddTask(0, func(ctx context.Context, dir string) error {
+		s.AddTask(0, func(ctx runbook.Context, dir string) error {
 			return prepare_sysroot(ctx, dir)
 		})
 	}

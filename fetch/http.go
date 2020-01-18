@@ -25,21 +25,20 @@ import (
 // don't unpack again if it's done
 
 // support scheme http and https. if file is archiver, unpack it
-func httpAndUnpack(ctx context.Context, url string,
-	httpGet func(ctx context.Context, from, to string) error,
+func httpAndUnpack(ctx runbook.Context, url string,
+	httpGet func(ctx runbook.Context, from, to string) error,
 	notify func(bool)) error {
-
-	arg := runbook.FromContext(ctx)
-	stdout, _ := arg.Output()
 
 	slice := strings.Split(url, "#")
 	if len(slice) != 2 {
-		return fmt.Errorf("%s - URL[%s] have no checksum", arg.Owner, url)
+		return fmt.Errorf("%s - URL[%s] have no checksum", ctx.Owner(), url)
 	}
+
+	dldir := ctx.GetStr("DLDIR")
+	stdout, _ := ctx.Output()
 
 	from := slice[0]
 	checksum := slice[1]
-	dldir, _ := arg.LookupVar("DLDIR")
 	to := filepath.Join(dldir, filepath.Base(from))
 
 	done := to + ".done"
@@ -53,7 +52,7 @@ func httpAndUnpack(ctx context.Context, url string,
 				return err
 			}
 		} else {
-			if err := builtinGet(ctx, from, to); err != nil {
+			if err := builtinGet(ctx.Ctx(), from, to); err != nil {
 				return err
 			}
 		}
@@ -66,7 +65,7 @@ func httpAndUnpack(ctx context.Context, url string,
 
 	if unar := unarchive.NewUnarchive(to); unar != nil {
 		fmt.Fprintf(stdout, "unarchive %s\n", to)
-		if e := unar.Unarchive(to, arg.GetStr("WORKDIR")); e != nil {
+		if e := unar.Unarchive(to, ctx.GetStr("WORKDIR")); e != nil {
 			return fmt.Errorf("unarchive %s failed:%s", to, e.Error())
 		}
 	}

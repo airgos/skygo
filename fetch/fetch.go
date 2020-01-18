@@ -6,7 +6,6 @@ package fetch
 
 import (
 	"container/list"
-	"context"
 	"fmt"
 	"sort"
 	"strconv"
@@ -38,7 +37,7 @@ type SrcURL struct {
 }
 
 type fetchCmd struct {
-	fetch func(ctx context.Context, from string, notify func(bool)) error
+	fetch func(ctx runbook.Context, from string, notify func(bool)) error
 	url   string
 }
 
@@ -145,22 +144,20 @@ func (fetch *Resource) Selected() (*SrcURL, string) {
 // Download download all source URL held by selected SrcURL
 // Extract automatically if source URL is an archiver, like tar.bz2
 // if source code is updated, it calls notify
-func (fetch *Resource) Download(ctx context.Context,
-	notify func(ctx context.Context)) error {
-
-	arg := runbook.FromContext(ctx)
+func (fetch *Resource) Download(ctx runbook.Context,
+	notify func(ctx runbook.Context)) error {
 
 	res, _ := fetch.Selected()
 	if res == nil {
-		log.Warning("%s don't hold any source URL", arg.Owner)
+		log.Warning("%s don't hold any source URL", ctx.Owner())
 		return nil
 	}
-	log.Trace("Start downloading source URLs owned by %s", arg.Owner)
+	log.Trace("Start downloading source URLs owned by %s", ctx.Owner())
 
 	h := res.head
 
 	var once sync.Once
-	g, ctx := xsync.WithContext(ctx)
+	g, _ := xsync.WithContext(ctx.Ctx())
 	for e := h.Front(); e != nil; e = e.Next() {
 		e := e // https://golang.org/doc/faq#closures_and_goroutines
 		g.Go(func() error {
@@ -266,10 +263,10 @@ func (src *SrcURL) PushVcs(srcurl string) *SrcURL {
 // 	return nil
 // }
 func (src *SrcURL) PushHTTP(srcurl string,
-	httpGet func(ctx context.Context, from, to string) error) *SrcURL {
+	httpGet func(ctx runbook.Context, from, to string) error) *SrcURL {
 
 	url := fetchCmd{
-		fetch: func(ctx context.Context, url string, notify func(bool)) error {
+		fetch: func(ctx runbook.Context, url string, notify func(bool)) error {
 			return httpAndUnpack(ctx, url, httpGet, notify)
 		},
 		url: srcurl,
