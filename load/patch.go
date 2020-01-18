@@ -39,7 +39,7 @@ func patch(ctx context.Context, dir string) error {
 
 	arg := runbook.FromContext(ctx)
 
-	file, e := os.Open(arg.GetVar("WORKDIR"))
+	file, e := os.Open(arg.GetStr("WORKDIR"))
 	if e != nil {
 		return nil
 	}
@@ -60,7 +60,7 @@ func patch(ctx context.Context, dir string) error {
 				command := runbook.NewCommand(ctx, "/bin/bash", "-c", patchcmd)
 				command.Cmd.Dir = dir
 
-				patch := filepath.Join(arg.GetVar("WORKDIR"), fpath)
+				patch := filepath.Join(arg.GetStr("WORKDIR"), fpath)
 				command.Cmd.Env = append(command.Cmd.Env, fmt.Sprintf("PATCHFILE=%s\n", patch))
 				if e := command.Run("patch"); e != nil {
 					return e

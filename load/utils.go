@@ -41,13 +41,13 @@ func getTargetArch(c carton.Builder, isNative bool) string {
 		return getVar(NATIVEARCH)
 	}
 
-	arch, ok := c.LookupVar(TARGETARCH)
-	if !ok {
+	arch := c.Get(TARGETARCH)
+	if arch == nil {
 		if arch = getVar(MACHINEARCH); arch == "" {
 			log.Error("MACHINEARCH is not set")
 		}
 	}
-	return arch
+	return arch.(string)
 }
 
 func getTargetOS(c carton.Builder, isNative bool) string {

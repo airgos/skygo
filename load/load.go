@@ -150,8 +150,8 @@ func NewLoad(ctx context.Context, name string, loaders int) (*Load, int) {
 		load.cancel()
 	}()
 
-	os.MkdirAll(load.GetVar(DLDIR), 0755)
-	os.MkdirAll(load.GetVar(IMAGEDIR), 0755)
+	os.MkdirAll(load.GetStr(DLDIR), 0755)
+	os.MkdirAll(load.GetStr(IMAGEDIR), 0755)
 	return &load, loaders
 }
 
@@ -178,7 +178,7 @@ func (l *Load) perform(c carton.Builder, target string,
 
 	l.setupArg(c, x.arg, isNative)
 
-	timeout, _ := x.arg.LookupVar("TIMEOUT")
+	timeout := x.arg.GetStr("TIMEOUT")
 	timeOut, _ := strconv.Atoi(timeout)
 	ctx, cancel := context.WithTimeout(l.ctx, time.Duration(timeOut)*time.Second)
 	defer cancel()
@@ -188,10 +188,10 @@ func (l *Load) perform(c carton.Builder, target string,
 	// reset buffer
 	x.buf.Reset()
 
-	os.MkdirAll(x.arg.GetVar("WORKDIR"), 0755) //WORKDIR
-	os.MkdirAll(x.arg.GetVar("T"), 0755)       //temp dir
-	os.MkdirAll(x.arg.GetVar("D"), 0755)
-	os.MkdirAll(x.arg.GetVar("PKGD"), 0755)
+	os.MkdirAll(x.arg.GetStr("WORKDIR"), 0755) //WORKDIR
+	os.MkdirAll(x.arg.GetStr("T"), 0755)       //temp dir
+	os.MkdirAll(x.arg.GetStr("D"), 0755)
+	os.MkdirAll(x.arg.GetStr("PKGD"), 0755)
 
 	if err = c.Runbook().Play(ctx, target, l); err != nil {
 		l.once.Do(func() {
@@ -218,7 +218,7 @@ func (l *Load) setupArg(carton carton.Builder, arg *runbook.Arg,
 	wd := WorkDir(carton, isNative)
 
 	// export global key-value to each carton's context
-	l.Range(func(k, v string) { arg.SetKv(k, v) })
+	l.Range(func(k, v string) { arg.Set(k, v) })
 
 	// key-value for each carton's context
 	for k, v := range map[string]string{
@@ -233,12 +233,12 @@ func (l *Load) setupArg(carton carton.Builder, arg *runbook.Arg,
 		"TARGETOS":     getTargetOS(carton, isNative),
 		"TARGETVENDOR": getTargetVendor(carton, isNative),
 	} {
-		arg.SetKv(k, v)
+		arg.Set(k, v)
 	}
-	arg.SetKv("ISNATIVE", isNative)
+	arg.Set("ISNATIVE", isNative)
 
 	if dir := carton.SrcDir(wd); dir != "" {
-		arg.SetKv("S", dir)
+		arg.Set("S", dir)
 	}
 }
 

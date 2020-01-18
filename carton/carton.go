@@ -94,7 +94,7 @@ func NewCarton(name string, m func(c *Carton)) {
 			InsertAfter(PACKAGE).Summary("Packages files from the installation directory").
 			AddTask(0, func(ctx context.Context, dir string) error {
 				arg := runbook.FromContext(ctx)
-				return c.Package(arg.GetVar("D"), arg.GetVar("PKGD"))
+				return c.Package(arg.GetStr("D"), arg.GetStr("PKGD"))
 			})
 
 		c.runbook = rb
@@ -116,7 +116,7 @@ func (c *Carton) Init(file string, arg Modifier, modify func(arg Modifier)) {
 
 		c.cartons = append(c.cartons, c.name)
 		c.KV.Init(c.name)
-		c.SetKv("CN", c.name) //CN: carton name. By default, CN is the same as PN(c.name, provider name)
+		c.Set("CN", c.name) //CN: carton name. By default, CN is the same as PN(c.name, provider name)
 
 		// create two packages: provider, provider-dev
 		c.NewPkg(c.name)

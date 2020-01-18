@@ -48,7 +48,7 @@ func file(ctx context.Context, url string, notify func(bool)) error {
 					}
 
 					rel := strings.TrimPrefix(path, u)                  // remove prefix dir of FilesPath
-					target := filepath.Join(arg.GetVar("WORKDIR"), rel) // full target path
+					target := filepath.Join(arg.GetStr("WORKDIR"), rel) // full target path
 
 					if info.IsDir() {
 						return os.MkdirAll(target, 0755)

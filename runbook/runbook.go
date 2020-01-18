@@ -437,7 +437,7 @@ func (s *Stage) play(ctx context.Context, w Waiter) error {
 
 // Arg holds arguments for runbook
 type Arg struct {
-	// who own this, same as GetVar("PN")
+	// who own this, same as GetStr("PN")
 	Owner string
 
 	Private interface{} // private data
@@ -470,13 +470,8 @@ func (arg *Arg) Range(f func(key, value string)) {
 // and the boolean will be false.
 func (arg *Arg) LookupVar(key string) (string, bool) {
 
-	// get from external KV firstly
-	if value, ok := arg.Kv.LookupVar(key); ok {
-		return value, true
-	}
-
-	value, ok := arg.KV.LookupVar(key)
-	return value, ok
+	// TODO: del this method
+	return key, false
 }
 
 // Output return IO stdout & stderr

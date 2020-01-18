@@ -43,7 +43,7 @@ func logfileExit(name string, arg *runbook.Arg, x interface{}) error {
 
 func logfileEnter(stage string, arg *runbook.Arg) (bool, interface{}, error) {
 
-	logfile := filepath.Join(arg.GetVar("T"), stage+".log")
+	logfile := filepath.Join(arg.GetStr("T"), stage+".log")
 	file, err := os.Create(logfile)
 	if err != nil {
 		return false, nil, fmt.Errorf("Failed to create %s", logfile)
@@ -68,24 +68,24 @@ func logfileEnter(stage string, arg *runbook.Arg) (bool, interface{}, error) {
 
 func stageSetDone(stage string, arg *runbook.Arg, x interface{}) error {
 
-	markStagePlayed(arg.Owner, stage, arg.GetVar("T"), true)
+	markStagePlayed(arg.Owner, stage, arg.GetStr("T"), true)
 	return nil
 }
 
 func stageStatus(stage string, arg *runbook.Arg) (bool, interface{}, error) {
 
-	return isStagePlayed(arg.Owner, stage, arg.GetVar("T")), nil, nil
+	return isStagePlayed(arg.Owner, stage, arg.GetStr("T")), nil, nil
 }
 
 func stageReset(stage string, arg *runbook.Arg) error {
 
-	markStagePlayed(arg.Owner, stage, arg.GetVar("T"), false)
+	markStagePlayed(arg.Owner, stage, arg.GetStr("T"), false)
 	return nil
 }
 
 func cleanTask(task string, arg *runbook.Arg) (bool, interface{}, error) {
 	if task == "clean" {
-		os.RemoveAll(arg.GetVar("T"))
+		os.RemoveAll(arg.GetStr("T"))
 
 		// only run clean task if S does exist
 		dir, ok := arg.LookupVar("S")
@@ -106,10 +106,10 @@ func tryToSetVarS(stage string, arg *runbook.Arg, x interface{}) error {
 	}
 
 	c := arg.Private.(carton.Builder)
-	if dir := c.SrcDir(arg.GetVar("WORKDIR")); dir == "" {
+	if dir := c.SrcDir(arg.GetStr("WORKDIR")); dir == "" {
 		return fmt.Errorf("Failed to find SrcDir automatically! Please set it explicitily by SetSrcDir.")
 	} else {
-		arg.SetKv("S", dir)
+		arg.Set("S", dir)
 	}
 	return nil
 }

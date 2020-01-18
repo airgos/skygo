@@ -17,7 +17,7 @@ import (
 func cleanall(ctx context.Context, dir string) error {
 
 	arg := runbook.FromContext(ctx)
-	wd := arg.GetVar("WORKDIR")
+	wd := arg.GetStr("WORKDIR")
 
 	os.RemoveAll(wd)
 	log.Trace("Remove working dir %s", wd)
@@ -38,7 +38,7 @@ func cleanstate(ctx context.Context, dir string) error {
 
 	arg := runbook.FromContext(ctx)
 	c := arg.Private.(carton.Builder)
-	cleanstate1(c, "", arg.GetVar("T"))
+	cleanstate1(c, "", arg.GetStr("T"))
 	return nil
 }
 

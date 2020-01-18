@@ -47,7 +47,7 @@ func prepare_sysroot(ctx context.Context, dir string) error {
 	carton := arg.Private.(carton.Builder)
 	isNative := arg.Get("ISNATIVE").(bool)
 
-	dest := filepath.Join(arg.GetVar("WORKDIR"), "sysroot")
+	dest := filepath.Join(arg.GetStr("WORKDIR"), "sysroot")
 
 	g, ctx := xsync.WithContext(ctx)
 	for _, d := range depTree(carton, isNative) {

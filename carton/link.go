@@ -6,9 +6,9 @@ package carton
 
 import (
 	"fmt"
+	"runtime"
 	"skygo/fetch"
 	"skygo/runbook"
-	"runtime"
 	"strings"
 )
 
@@ -30,16 +30,14 @@ func (l *link) Depends(dep ...string) []string      { return l.h.Depends() }
 func (l *link) Runbook() *runbook.Runbook           { return l.h.Runbook() }
 func (l *link) String() string                      { return l.h.String() }
 
-// LookupVar retrieves the value of the variable named by the key.
-// If the variable is present, value (which may be empty) is returned
-// and the boolean is true. Otherwise the returned value will be empty
-// and the boolean will be false.
-func (l *link) LookupVar(key string) (string, bool) {
+// Get retrieves the value of the variable named by the key.
+// If the variable is not present, nil is returned
+func (l *link) Get(key string) interface{} {
 
 	if key == "CN" {
-		return l.alias, true
+		return l.alias
 	}
-	return l.h.LookupVar(key)
+	return l.h.Get(key)
 }
 
 // Range visits each item in KV

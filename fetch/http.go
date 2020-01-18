@@ -66,7 +66,7 @@ func httpAndUnpack(ctx context.Context, url string,
 
 	if unar := unarchive.NewUnarchive(to); unar != nil {
 		fmt.Fprintf(stdout, "unarchive %s\n", to)
-		if e := unar.Unarchive(to, arg.GetVar("WORKDIR")); e != nil {
+		if e := unar.Unarchive(to, arg.GetStr("WORKDIR")); e != nil {
 			return fmt.Errorf("unarchive %s failed:%s", to, e.Error())
 		}
 	}
