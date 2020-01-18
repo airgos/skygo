@@ -5,7 +5,6 @@
 package runbook
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -27,7 +26,7 @@ type taskCmd struct {
 
 // TaskGoFunc prototype
 // dir is working directory
-type TaskGoFunc func(ctx context.Context, dir string) error
+type TaskGoFunc func(ctx Context, dir string) error
 
 // taskGo represent golang func task
 type taskGo struct {
@@ -80,7 +79,7 @@ func (t *TaskSet) Add(key interface{}, task interface{}) {
 		}
 		v = taskCmd{routine: routine, script: kind}
 
-	case func(context.Context, string) error:
+	case func(Context, string) error:
 		v = taskGo{f: TaskGoFunc(kind)}
 
 	case TaskGoFunc:
@@ -111,7 +110,7 @@ func (t *TaskSet) Del(key interface{}) {
 }
 
 // play run all tasks by order of Sort.Ints(weight)
-func (t *TaskSet) play(ctx context.Context) error {
+func (t *TaskSet) play(ctx Context) error {
 
 	// sort weight
 	weight := make([]int, 0, len(t.set))
@@ -139,7 +138,7 @@ func (t *TaskSet) play(ctx context.Context) error {
 	return nil
 }
 
-func (t *TaskSet) runtask(ctx context.Context, key interface{}) (e error) {
+func (t *TaskSet) runtask(ctx Context, key interface{}) (e error) {
 
 	switch kind := t.set[key].(type) {
 	default:
@@ -156,18 +155,17 @@ func (t *TaskSet) runtask(ctx context.Context, key interface{}) (e error) {
 // run the taskCmd, before run, it does:
 // Locate tc.name under runtime GetFilePath(), if found, it's script file, else it's script string
 // If script have function @routine, append routine name
-func (tc *taskCmd) run(ctx context.Context, dir string) error {
+func (tc *taskCmd) run(ctx Context, dir string) error {
 
 	var r io.Reader
 	routine := tc.routine
-	arg := FromContext(ctx)
 
 	// regular expression used to match shell function name
 	exp := regexp.MustCompile(fmt.Sprintf(` *%s *\( *\)`, tc.routine))
 
 	if len(strings.Split(tc.script, "\n")) == 1 {
 		log.Trace("Try to find script under FilesPath")
-		for _, d := range arg.FilesPath {
+		for _, d := range ctx.FilesPath() {
 			path := filepath.Join(d, tc.script)
 			if info, err := os.Stat(path); err == nil &&
 				info.Mode().IsRegular() {
@@ -201,7 +199,7 @@ func (tc *taskCmd) run(ctx context.Context, dir string) error {
 		command.Cmd.Dir = dir
 	}
 
-	return command.Run(tc.routine)
+	return command.Run(ctx, tc.routine)
 }
 
 // TaskForce is just a wrapper of TaskSet with dependency

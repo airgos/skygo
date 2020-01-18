@@ -14,35 +14,29 @@ import (
 	"skygo/utils/log"
 )
 
+// Command represents command of runbook
 type Command struct {
-	Cmd *exec.Cmd
-
+	Cmd    *exec.Cmd
 	ctxErr error
-	ctx    context.Context
 }
 
 // NewCommand new exec.Cmd wrapper Command
-func NewCommand(ctx context.Context, name string, args ...string) *Command {
+func NewCommand(ctx Context, name string, args ...string) *Command {
 
-	arg := FromContext(ctx)
-
-	cmd := exec.CommandContext(ctx, name, args...)
-	cmd.Stdout, cmd.Stderr = arg.Output()
+	cmd := exec.CommandContext(ctx.Ctx(), name, args...)
+	cmd.Stdout, cmd.Stderr = ctx.Output()
 
 	cmd.Env = os.Environ() // inherits OS global env, like HTTP_PROXY
-	arg.Range(func(key, value string) {
+	ctx.Range(func(key, value string) {
 		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", key, value))
 	})
 	return &Command{
 		Cmd: cmd,
-		ctx: ctx,
 	}
 }
 
 // CmdRun push child processes into the same process group then run
-func (c *Command) Run(stage string) error {
-
-	arg := FromContext(c.ctx)
+func (c *Command) Run(ctx Context, stage string) error {
 
 	//Child processes get the same process group id(PGID) as their parents by default
 	c.Cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
@@ -51,7 +45,7 @@ func (c *Command) Run(stage string) error {
 	defer close(waitDone)
 	go func() {
 		select {
-		case <-c.ctx.Done():
+		case <-ctx.Ctx().Done():
 			select {
 			case <-waitDone: // command had been finished, ignore cancelation
 			default:
@@ -61,9 +55,9 @@ func (c *Command) Run(stage string) error {
 				//own child, this should kill the child along with all of its
 				//children on any *Nix systems.
 				syscall.Kill(-c.Cmd.Process.Pid, syscall.SIGKILL)
-				c.ctxErr = c.ctx.Err()
+				c.ctxErr = ctx.Ctx().Err()
 				log.Trace("Runbook: kill child processes started by %s@%s since %v",
-					arg.Owner, stage, c.ctxErr)
+					ctx.Owner(), stage, c.ctxErr)
 			}
 		case <-waitDone:
 		}
@@ -77,18 +71,18 @@ func (c *Command) Run(stage string) error {
 	if c.ctxErr != nil {
 		switch c.ctxErr {
 		case context.DeadlineExceeded:
-			timeout, _ := arg.LookupVar("TIMEOUT")
+			timeout := ctx.GetStr("TIMEOUT")
 			return fmt.Errorf("Runbook expire on %s@%s over %s seconds",
-				arg.Owner, stage, timeout)
+				ctx.Owner(), stage, timeout)
 		default:
 			return fmt.Errorf("Runbook failed on %s@%s since %s",
-				arg.Owner, stage, c.ctxErr)
+				ctx.Owner(), stage, c.ctxErr)
 		}
 	}
 
 	if err != nil {
 		return fmt.Errorf("Runbook failed on %s@%s since %s",
-			arg.Owner, stage, err)
+			ctx.Owner(), stage, err)
 	}
 	return nil
 }

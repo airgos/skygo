@@ -17,6 +17,41 @@ import (
 	"skygo/utils/log"
 )
 
+// Context define methods used by runbook
+type Context interface {
+
+	// who own this Context & runbook
+	Owner() string
+
+	//interface to retrieves data from the context.
+	KVGetter
+
+	//GetStr retrieves data from the context.
+	//just a wrapper of KVGetter.Get
+	GetStr(key string) string
+
+	// saves data in the context.
+	// each Context should has its own KV instance for setting
+	KVSetter
+
+	// give stdout & stderr IO
+	Output() (stdout, stderr io.Writer)
+
+	// give file path for locating general file, e.g. patch file
+	FilesPath() []string
+
+	// retrieves parent standard context
+	Ctx() context.Context
+
+	// Wait waits one dependent stage belong to another runbook finished
+	// TODO: remove isNative, runbook should don't care whether it's native
+	Wait(runbook, stage string, isNative bool) <-chan struct{}
+
+	// private data
+	// TODO: remove it
+	Private() interface{}
+}
+
 // Error used by Runbook
 var (
 	ErrUnknownTaskType = errors.New("Unkown Task Type")
@@ -162,10 +197,9 @@ func (rb *Runbook) HasTaskForce(name string) bool {
 }
 
 // runTaskForce run task in task force
-func (rb *Runbook) runTaskForce(ctx context.Context, name string, w Waiter) error {
+func (rb *Runbook) runTaskForce(ctx Context, name string) error {
 
-	arg := FromContext(ctx)
-	isNative := arg.Get("ISNATIVE").(bool)
+	isNative := ctx.Get("ISNATIVE").(bool)
 
 	tf := rb.taskForce[name]
 	// wait its dependent stages belong to another rubooks are finished
@@ -178,21 +212,21 @@ func (rb *Runbook) runTaskForce(ctx context.Context, name string, w Waiter) erro
 			stage = d[i+1:]
 		}
 		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-w.Wait(runbook, stage, isNative):
+		case <-ctx.Ctx().Done():
+			return ctx.Ctx().Err()
+		case <-ctx.Wait(runbook, stage, isNative):
 		}
 	}
 
-	log.Trace("Run task force owned by %s: %s", arg.Owner, name)
-	if handled, err := rb.rangeIn(name, arg); handled || err != nil {
+	log.Trace("Run task force owned by %s: %s", ctx.Owner(), name)
+	if handled, err := rb.rangeIn(ctx, name); handled || err != nil {
 		return err
 	}
 
 	// if taskset's dir is empty, try to use S
 	if tf.taskset.Dir == "" {
-		if dir, ok := arg.LookupVar("S"); ok {
-			tf.taskset.Dir = dir
+		if dir := ctx.Get("S"); dir != nil {
+			tf.taskset.Dir = dir.(string)
 		}
 	}
 
@@ -200,35 +234,33 @@ func (rb *Runbook) runTaskForce(ctx context.Context, name string, w Waiter) erro
 	if err := tf.taskset.runtask(ctx, 0); err != nil {
 		return err
 	}
-	return rb.rangeOut(name, arg)
+	return rb.rangeOut(ctx, name)
 }
 
-// Play run task force or iterates stages until stage @name
-// if @name is emptry, it will iterates all stages
-func (rb *Runbook) Play(ctx context.Context, name string, w Waiter) error {
+// Play run task force or iterates stages until stage @target
+// if @target is emptry, it will iterates all stages
+func (rb *Runbook) Play(ctx Context, target string) error {
 
-	arg := FromContext(ctx)
-
-	if rb.HasTaskForce(name) {
-		return rb.runTaskForce(ctx, name, w)
+	if rb.HasTaskForce(target) {
+		return rb.runTaskForce(ctx, target)
 	}
 
-	if name != "" && nil == rb.Stage(name) {
-		return fmt.Errorf("%s has no stage or task force %s", arg.Owner, name)
+	if target != "" && nil == rb.Stage(target) {
+		return fmt.Errorf("%s has no stage or task force %s", ctx.Owner(), target)
 	}
 
-	log.Trace("Range stages held by %s", arg.Owner)
+	log.Trace("Range stages held by %s", ctx.Owner())
 	for stage := rb.Head(); stage != nil; stage = stage.Next() {
 
 		if num := stage.taskset.Len(); num > 0 {
 			log.Trace("Play stage %s[tasks=%d] held by %s",
-				name, num, arg.Owner)
+				target, num, ctx.Owner())
 
-			err := stage.play(ctx, w)
+			err := stage.play(ctx)
 			if err != nil {
 				return err
 			}
-			if stage.name == name {
+			if stage.name == target {
 				return nil
 			}
 		}
@@ -330,15 +362,14 @@ func (s *Stage) DelTask(weight int) *Stage {
 }
 
 // Reset clear executed status, then s.Play can be run again
-func (s *Stage) Reset(ctx context.Context) {
+func (s *Stage) Reset(ctx Context) {
 
-	arg := FromContext(ctx)
-	s.rangeReset(s.name, arg)
+	s.rangeReset(ctx, s.name)
 
 	s.m.Lock()
 	defer s.m.Unlock()
 
-	isNative := arg.Get("ISNATIVE").(bool)
+	isNative := ctx.Get("ISNATIVE").(bool)
 	atomic.StoreUint32(&s.executed[index(isNative)], 0)
 }
 
@@ -378,10 +409,9 @@ func (s *Stage) Wait(isNative bool) <-chan struct{} {
 }
 
 // Play perform tasks in the stage
-func (s *Stage) play(ctx context.Context, w Waiter) error {
+func (s *Stage) play(ctx Context) error {
 
-	arg := FromContext(ctx)
-	isNative := arg.Get("ISNATIVE").(bool)
+	isNative := ctx.Get("ISNATIVE").(bool)
 	executed := &s.executed[index(isNative)]
 
 	if atomic.LoadUint32(executed) == 1 {
@@ -406,9 +436,9 @@ func (s *Stage) play(ctx context.Context, w Waiter) error {
 			stage = d[i+1:]
 		}
 		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-w.Wait(runbook, stage, isNative):
+		case <-ctx.Ctx().Done():
+			return ctx.Ctx().Err()
+		case <-ctx.Wait(runbook, stage, isNative):
 		}
 	}
 
@@ -416,99 +446,21 @@ func (s *Stage) play(ctx context.Context, w Waiter) error {
 
 		defer atomic.StoreUint32(executed, 1)
 
-		if handled, err := s.rangeIn(s.name, arg); handled || err != nil {
+		if handled, err := s.rangeIn(ctx, s.name); handled || err != nil {
 			return err
 		}
 
 		// if taskset's dir is empty, try to use S
 		if s.taskset.Dir == "" {
-			if dir, ok := arg.LookupVar("S"); ok {
-				s.taskset.Dir = dir
+			if dir := ctx.Get("S"); dir != nil {
+				s.taskset.Dir = dir.(string)
 			}
 		}
 
 		if err := s.taskset.play(ctx); err != nil {
 			return err
 		}
-		return s.rangeOut(s.name, arg)
+		return s.rangeOut(ctx, s.name)
 	}
 	return nil
-}
-
-// Arg holds arguments for runbook
-type Arg struct {
-	// who own this, same as GetStr("PN")
-	Owner string
-
-	Private interface{} // private data
-
-	// FilesPath is a collection of directory that's be used for locating local file
-	FilesPath []string
-
-	KV          // inherits KV, each runbook context has its own KV
-	Kv KVGetter // extenral KV Getter
-
-	// underline IO, call method Output() to get IO
-	stdout, stderr io.Writer
-
-	// help to wrap IO based on underline IO
-	// example: use io.MultiWriter to duplicates its writes
-	Writer func() (stdout, stderr io.Writer)
-
-	m sync.Mutex
-}
-
-// Range iterates external and internal key-value data
-func (arg *Arg) Range(f func(key, value string)) {
-	arg.Kv.Range(f)
-	arg.KV.Range(f)
-}
-
-// LookupVar retrieves the value of the variable named by the key.
-// If the variable is present, value (which may be empty) is returned
-// and the boolean is true. Otherwise the returned value will be empty
-// and the boolean will be false.
-func (arg *Arg) LookupVar(key string) (string, bool) {
-
-	// TODO: del this method
-	return key, false
-}
-
-// Output return IO stdout & stderr
-func (arg *Arg) Output() (stdout, stderr io.Writer) {
-	arg.m.Lock()
-	defer arg.m.Unlock()
-	if arg.Writer != nil {
-		return arg.Writer()
-	}
-	return arg.stdout, arg.stderr
-}
-
-// UnderOutput return underline IO stdout & stderr
-func (arg *Arg) UnderOutput() (stdout, stderr io.Writer) {
-	return arg.stdout, arg.stderr
-}
-
-// SetUnderOutput set underline IO stdout & stderr
-func (arg *Arg) SetUnderOutput(stdout, stderr io.Writer) {
-	arg.m.Lock()
-	arg.stdout, arg.stderr = stdout, stderr
-	arg.m.Unlock()
-}
-
-type argToken string
-
-// NewContext returns a new Context that carries value arg
-func NewContext(ctx context.Context, arg *Arg) context.Context {
-
-	return context.WithValue(ctx, argToken("arg"), arg)
-}
-
-// FromContext returns the Arg value stored in ctx, if any
-func FromContext(ctx context.Context) *Arg {
-	arg, ok := ctx.Value(argToken("arg")).(*Arg)
-	if !ok {
-		panic("Context don't bind Arg")
-	}
-	return arg
 }
