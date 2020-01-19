@@ -49,6 +49,7 @@ func logfileEnter(ctx runbook.Context, stage string) (bool, interface{}, error) 
 	}
 
 	ctx.Set("STDOUT", file)
+	ctx.Set("STDERR", file)
 
 	return false, file, nil
 }

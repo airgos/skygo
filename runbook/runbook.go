@@ -48,7 +48,6 @@ type Context interface {
 	Wait(runbook, stage string, isNative bool) <-chan struct{}
 
 	// private data
-	// TODO: remove it
 	Private() interface{}
 }
 

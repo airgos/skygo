@@ -30,13 +30,11 @@ import (
 // Load represent state of load
 type Load struct {
 	loaders int // the number of loaders
-	pool    *xsync.Pool
 
-	// vars       map[string]string //global key-value
 	runbook.KV //global key-value
 
-	arg  []*runbook.Arg
-	bufs []*bytes.Buffer
+	pool  *xsync.Pool
+	pools []*pool
 
 	// loadError is allowed to set only once
 	err  loadError
@@ -58,8 +56,8 @@ type cartonMeta struct {
 }
 
 type pool struct {
-	arg *runbook.Arg
-	buf *bytes.Buffer
+	buf            *bytes.Buffer
+	stdout, stderr io.Writer
 }
 
 type loadError struct {
@@ -91,8 +89,7 @@ func NewLoad(ctx context.Context, name string, loaders int) (*Load, int) {
 	log.Trace("MaxLoaders is set to %d\n", loaders)
 
 	load := Load{
-		arg:     make([]*runbook.Arg, loaders),
-		bufs:    make([]*bytes.Buffer, loaders),
+		pools:   make([]*pool, loaders),
 		loaders: loaders,
 		loadCh:  make(chan *cartonMeta),
 	}
@@ -121,13 +118,10 @@ func NewLoad(ctx context.Context, name string, loaders int) (*Load, int) {
 
 	load.pool = xsync.NewPool(loaders, func(i int) interface{} {
 		x := pool{
-			arg: new(runbook.Arg),
 			buf: new(bytes.Buffer),
 		}
 
-		x.arg.SetUnderOutput(nil, x.buf)
-		load.arg[i] = x.arg
-		load.bufs[i] = x.buf
+		load.pools[i] = &x
 		return &x
 	})
 
@@ -161,8 +155,10 @@ func (l *Load) SetOutput(index int, stdout, stderr io.Writer) *Load {
 		return nil
 	}
 
-	l.arg[index].SetUnderOutput(stdout,
-		io.MultiWriter(stderr, l.bufs[index]))
+	if stderr != nil {
+		l.pools[index].stderr = io.MultiWriter(l.pools[index].buf, stderr)
+	}
+	l.pools[index].stdout = stdout
 	return l
 }
 
@@ -176,27 +172,19 @@ func (l *Load) perform(c carton.Builder, target string,
 	defer l.pool.Put(y)
 	x := y.(*pool)
 
-	l.setupArg(c, x.arg, isNative)
-
-	timeout := x.arg.GetStr("TIMEOUT")
+	// TODO: bind to stage level
+	timeout := l.GetStr("TIMEOUT")
 	timeOut, _ := strconv.Atoi(timeout)
-	ctx, cancel := context.WithTimeout(l.ctx, time.Duration(timeOut)*time.Second)
+	_, cancel := context.WithTimeout(l.ctx, time.Duration(timeOut)*time.Second)
 	defer cancel()
-
-	ctx = runbook.NewContext(ctx, x.arg)
 
 	// reset buffer
 	x.buf.Reset()
 
-	os.MkdirAll(x.arg.GetStr("WORKDIR"), 0755) //WORKDIR
-	os.MkdirAll(x.arg.GetStr("T"), 0755)       //temp dir
-	os.MkdirAll(x.arg.GetStr("D"), 0755)
-	os.MkdirAll(x.arg.GetStr("PKGD"), 0755)
-
-	if err = c.Runbook().Play(ctx, target, l); err != nil {
+	if err = c.Runbook().Play(newContext(l, c, x, isNative), target); err != nil {
 		l.once.Do(func() {
 			l.err = loadError{
-				carton: x.arg.Owner,
+				carton: c.Provider(),
 				buf:    x.buf,
 				err:    err,
 			}
@@ -205,43 +193,6 @@ func (l *Load) perform(c carton.Builder, target string,
 	}
 	return nil
 }
-
-func (l *Load) setupArg(carton carton.Builder, arg *runbook.Arg,
-	isNative bool) {
-
-	arg.Owner = carton.Provider()
-	arg.FilesPath = carton.FilesPath()
-	arg.Private = carton
-	arg.Kv = carton
-	arg.KV.Init(arg.Owner)
-
-	wd := WorkDir(carton, isNative)
-
-	// export global key-value to each carton's context
-	l.Range(func(k, v string) { arg.Set(k, v) })
-
-	// key-value for each carton's context
-	for k, v := range map[string]string{
-		"WORKDIR": wd,
-
-		"PN":   carton.Provider(), // PN: provider name
-		"T":    filepath.Join(wd, "temp"),
-		"D":    filepath.Join(wd, "image"),    // install destination directory
-		"PKGD": filepath.Join(wd, "packages"), // points to directory for files to be packaged
-
-		"TARGETARCH":   getTargetArch(carton, isNative),
-		"TARGETOS":     getTargetOS(carton, isNative),
-		"TARGETVENDOR": getTargetVendor(carton, isNative),
-	} {
-		arg.Set(k, v)
-	}
-	arg.Set("ISNATIVE", isNative)
-
-	if dir := carton.SrcDir(wd); dir != "" {
-		arg.Set("S", dir)
-	}
-}
-*/
 
 func (l *Load) setupRunbook(c carton.Builder) {
 
