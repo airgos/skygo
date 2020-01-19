@@ -165,27 +165,18 @@ func (l *Load) SetOutput(index int, stdout, stderr io.Writer) *Load {
 func (l *Load) perform(c carton.Builder, target string,
 	isNative bool) (err error) {
 
-	y, err := l.pool.Get(l.ctx)
-	if err != nil {
-		return err
-	}
-	defer l.pool.Put(y)
-	x := y.(*pool)
-
 	// TODO: bind to stage level
 	timeout := l.GetStr("TIMEOUT")
 	timeOut, _ := strconv.Atoi(timeout)
 	_, cancel := context.WithTimeout(l.ctx, time.Duration(timeOut)*time.Second)
 	defer cancel()
 
-	// reset buffer
-	x.buf.Reset()
-
-	if err = c.Runbook().Play(newContext(l, c, x, isNative), target); err != nil {
+	ctx := newContext(l, c, isNative)
+	if err = c.Runbook().Play(ctx, target); err != nil {
 		l.once.Do(func() {
 			l.err = loadError{
 				carton: c.Provider(),
-				buf:    x.buf,
+				buf:    ctx.errBuf(),
 				err:    err,
 			}
 		})

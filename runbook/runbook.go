@@ -44,11 +44,16 @@ type Context interface {
 	Ctx() context.Context
 
 	// Wait waits one dependent stage belong to another runbook finished
-	// TODO: remove isNative, runbook should don't care whether it's native
 	Wait(runbook, stage string, isNative bool) <-chan struct{}
 
 	// private data
 	Private() interface{}
+
+	// acquire permission to run
+	Acquire() error
+
+	//  release permission
+	Release()
 }
 
 // Error used by Runbook
@@ -252,6 +257,10 @@ func (rb *Runbook) Play(ctx Context, target string) error {
 	for stage := rb.Head(); stage != nil; stage = stage.Next() {
 
 		if num := stage.taskset.Len(); num > 0 {
+
+			if err := ctx.Acquire(); err != nil {
+				return err
+			}
 			log.Trace("Play stage %s[tasks=%d] held by %s",
 				target, num, ctx.Owner())
 
@@ -259,6 +268,8 @@ func (rb *Runbook) Play(ctx Context, target string) error {
 			if err != nil {
 				return err
 			}
+
+			ctx.Release()
 			if stage.name == target {
 				return nil
 			}

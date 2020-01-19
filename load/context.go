@@ -7,6 +7,7 @@
 package load
 
 import (
+	"bytes"
 	"context"
 	"io"
 	"os"
@@ -24,12 +25,11 @@ type _context struct {
 }
 
 func newContext(load *Load, carton carton.Builder,
-	pool *pool, isNative bool) runbook.Context {
+	isNative bool) *_context {
 
 	ctx := &_context{
 		load:   load,
 		carton: carton,
-		pool:   pool,
 	}
 
 	workDir := WorkDir(carton, isNative)
@@ -133,4 +133,29 @@ func (ctx *_context) Range(f func(key, value string)) {
 	ctx.load.Range(f)
 	ctx.carton.Range(f)
 	ctx.kv.Range(f)
+}
+
+func (ctx *_context) Acquire() error {
+
+	y, err := ctx.load.pool.Get(ctx.Ctx())
+	if err != nil {
+		return err
+	}
+
+	x := y.(*pool)
+	x.buf.Reset() // reset buffer
+	ctx.pool = x
+
+	return nil
+}
+
+func (ctx *_context) Release() {
+	ctx.load.pool.Put(ctx.pool)
+}
+
+func (ctx *_context) errBuf() *bytes.Buffer {
+	if ctx.pool == nil {
+		return nil
+	}
+	return ctx.pool.buf
 }
