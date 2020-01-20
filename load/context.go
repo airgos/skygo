@@ -119,10 +119,12 @@ func (ctx *_context) Get(key string) interface{} {
 	if v := ctx.kv.Get(key); v != nil {
 		return v
 	}
-	if v := ctx.load.Get(key); v != nil {
+
+	if v := ctx.carton.Get(key); v != nil {
 		return v
 	}
-	if v := ctx.carton.Get(key); v != nil {
+
+	if v := ctx.load.kv.Get(key); v != nil {
 		return v
 	}
 	return nil
@@ -130,7 +132,7 @@ func (ctx *_context) Get(key string) interface{} {
 
 func (ctx *_context) Range(f func(key, value string)) {
 
-	ctx.load.Range(f)
+	ctx.load.kv.Range(f)
 	ctx.carton.Range(f)
 	ctx.kv.Range(f)
 }

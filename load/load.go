@@ -31,7 +31,7 @@ import (
 type Load struct {
 	loaders int // the number of loaders
 
-	runbook.KV //global key-value
+	kv *runbook.KV //global key-value
 
 	pool  *xsync.Pool
 	pools []*pool
@@ -80,7 +80,7 @@ func (l *loadError) Error() string {
 
 // NewLoad create load to build carton
 // loaders represent how many loader work. if its value is 0, it will use default value
-// BUG: it has no chance to modify BUILDIR etc after NewLoad
+// Such as BUILDIR can be changed by Settings().Set(key, value) before invoking NewLoad
 func NewLoad(ctx context.Context, name string, loaders int) (*Load, int) {
 
 	if loaders == 0 {
@@ -88,15 +88,15 @@ func NewLoad(ctx context.Context, name string, loaders int) (*Load, int) {
 	}
 	log.Trace("MaxLoaders is set to %d\n", loaders)
 
+	kv := Settings()
 	load := Load{
 		pools:   make([]*pool, loaders),
 		loaders: loaders,
 		loadCh:  make(chan *cartonMeta),
+		kv:      kv,
 	}
 
-	loadDefaultCfg(&load.KV)
-
-	buildir := defaultVars[BUILDIR].(string)
+	buildir := kv.GetStr(BUILDIR)
 	os.MkdirAll(buildir, 0755)
 	lockfile := filepath.Join(buildir, name+".lockfile")
 
@@ -144,8 +144,8 @@ func NewLoad(ctx context.Context, name string, loaders int) (*Load, int) {
 		load.cancel()
 	}()
 
-	os.MkdirAll(load.GetStr(DLDIR), 0755)
-	os.MkdirAll(load.GetStr(IMAGEDIR), 0755)
+	os.MkdirAll(kv.GetStr(DLDIR), 0755)
+	os.MkdirAll(kv.GetStr(IMAGEDIR), 0755)
 	return &load, loaders
 }
 
@@ -166,7 +166,7 @@ func (l *Load) perform(c carton.Builder, target string,
 	isNative bool) (err error) {
 
 	// TODO: bind to stage level
-	timeout := l.GetStr("TIMEOUT")
+	timeout := l.kv.GetStr("TIMEOUT")
 	timeOut, _ := strconv.Atoi(timeout)
 	_, cancel := context.WithTimeout(l.ctx, time.Duration(timeOut)*time.Second)
 	defer cancel()

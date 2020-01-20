@@ -50,11 +50,13 @@ var defaultVars = map[string]interface{}{
 	"TIMEOUT": "1800", // unit is second, default is 30min
 }
 
+var settings *runbook.KV
+
 func getVar(key string) string {
 	return defaultVars[key].(string)
 }
 
-func loadDefaultCfg(kv *runbook.KV) {
+func init() {
 
 	wd, _ := os.Getwd()
 
@@ -78,5 +80,12 @@ func loadDefaultCfg(kv *runbook.KV) {
 	dl := filepath.Join(build, "downloads")
 	defaultVars[DLDIR] = dl
 
-	kv.Init2("loader", defaultVars)
+	kv := &runbook.KV{}
+	kv.Init2("init", defaultVars)
+	settings = kv
+}
+
+// Settings retrieves global configuration KV
+func Settings() *runbook.KV {
+	return settings
 }
