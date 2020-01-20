@@ -47,7 +47,7 @@ var defaultVars = map[string]interface{}{
 	MACHINEARCH:   "",
 	MACHINEVENDOR: "",
 
-	"TIMEOUT": "1800", // unit is second, default is 30min
+	"TIMEOUT": 1800, // unit is second, default is 30min
 }
 
 var settings *runbook.KV
@@ -86,6 +86,22 @@ func init() {
 }
 
 // Settings retrieves global configuration KV
+// Global configuration items:
+//
+//  BUILDIR: top build dir
+//  DLDIR: where to save source code archive. default value is BUILDIR/downloads
+//  TMPDIR: default is BUILDIR/tmp
+//  BASEWKDIR: default value is TMPDIR/work
+//  IMAGEDIR: where to store final images. default value is TMPDIR/deploy/image
+//  MACHINE: it should be configed outside
+//  MACHINEARCH:  it should be configed outside
+//  MACHINEOS: default value is linux
+//  MACHINEVENDOR: it should be configed outside
+//  TARGETARCH: ARCH for specific carton
+//  TARGETOS: OS for specific carton
+//  TARGETVENDOR: vendor for specific carton
+//  TIMEOUT: timeout to build carton. default value is 1800. unit is second
+//
 func Settings() *runbook.KV {
 	return settings
 }

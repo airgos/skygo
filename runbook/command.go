@@ -71,8 +71,8 @@ func (c *Command) Run(ctx Context, stage string) error {
 	if c.ctxErr != nil {
 		switch c.ctxErr {
 		case context.DeadlineExceeded:
-			timeout := ctx.GetStr("TIMEOUT")
-			return fmt.Errorf("Runbook expire on %s@%s over %s seconds",
+			timeout := ctx.Get("TIMEOUT")
+			return fmt.Errorf("Runbook expire on %s@%s over %d seconds",
 				ctx.Owner(), stage, timeout)
 		default:
 			return fmt.Errorf("Runbook failed on %s@%s since %s",

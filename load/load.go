@@ -14,7 +14,6 @@ import (
 	"os/signal"
 	"path/filepath"
 	"runtime"
-	"strconv"
 	"strings"
 	"sync"
 	"syscall"
@@ -165,10 +164,8 @@ func (l *Load) SetOutput(index int, stdout, stderr io.Writer) *Load {
 func (l *Load) perform(c carton.Builder, target string,
 	isNative bool) (err error) {
 
-	// TODO: bind to stage level
-	timeout := l.kv.GetStr("TIMEOUT")
-	timeOut, _ := strconv.Atoi(timeout)
-	_, cancel := context.WithTimeout(l.ctx, time.Duration(timeOut)*time.Second)
+	timeout := l.kv.Get("TIMEOUT").(int)
+	_, cancel := context.WithTimeout(l.ctx, time.Duration(timeout)*time.Second)
 	defer cancel()
 
 	ctx := newContext(l, c, isNative)
