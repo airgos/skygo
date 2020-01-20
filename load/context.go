@@ -161,3 +161,19 @@ func (ctx *_context) errBuf() *bytes.Buffer {
 	}
 	return ctx.pool.buf
 }
+
+// return SRC dir & build dir
+func (ctx *_context) Dir() (string, string) {
+
+	src := ctx.carton.SrcDir(ctx.GetStr("WORKDIR"))
+	build := src
+
+	if b := ctx.Get("B"); b != nil {
+		x := b.(string)
+
+		if !filepath.IsAbs(x) {
+			build = filepath.Join(src, x)
+		}
+	}
+	return src, build
+}

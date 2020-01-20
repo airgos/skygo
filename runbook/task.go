@@ -26,7 +26,7 @@ type taskCmd struct {
 
 // TaskGoFunc prototype
 // dir is working directory
-type TaskGoFunc func(ctx Context, dir string) error
+type TaskGoFunc func(ctx Context) error
 
 // taskGo represent golang func task
 type taskGo struct {
@@ -38,7 +38,6 @@ type taskGo struct {
 type TaskSet struct {
 	set   map[interface{}]interface{}
 	owner string //optional. who own this TaskSet
-	Dir   string //optional. working directory
 }
 
 // newTaskSet create taskset
@@ -79,7 +78,7 @@ func (t *TaskSet) Add(key interface{}, task interface{}) {
 		}
 		v = taskCmd{routine: routine, script: kind}
 
-	case func(Context, string) error:
+	case func(Context) error:
 		v = taskGo{f: TaskGoFunc(kind)}
 
 	case TaskGoFunc:
@@ -87,17 +86,16 @@ func (t *TaskSet) Add(key interface{}, task interface{}) {
 
 	default:
 		b := strings.Builder{}
-		b.WriteString(fmt.Sprintf("Unknown task type: %T\n\n", task))
+		b.WriteString(fmt.Sprintf("%s has unknown task type: %T\n\n", t.owner, task))
 
-		pc, file, line, _ := runtime.Caller(1)
-		details := runtime.FuncForPC(pc)
-		b.WriteString(fmt.Sprintf("%s:%d\n", file, line))
-		b.WriteString(fmt.Sprintf("\t%s\n", details.Name()))
+		for i := 0; i < 4; i++ {
 
-		pc, file, line, _ = runtime.Caller(2)
-		details = runtime.FuncForPC(pc)
-		b.WriteString(fmt.Sprintf("%s:%d\n", file, line))
-		b.WriteString(fmt.Sprintf("\t%s\n", details.Name()))
+			pc, file, line, _ := runtime.Caller(i)
+			details := runtime.FuncForPC(pc)
+			b.WriteString(fmt.Sprintf("%s:%d\n", file, line))
+			b.WriteString(fmt.Sprintf("\t%s\n", details.Name()))
+
+		}
 		panic(b.String())
 	}
 
@@ -145,9 +143,9 @@ func (t *TaskSet) runtask(ctx Context, key interface{}) (e error) {
 		// fmt.Printf("%T", kind)
 		e = ErrUnknownTaskType
 	case taskGo:
-		e = kind.f(ctx, t.Dir)
+		e = kind.f(ctx)
 	case taskCmd:
-		e = kind.run(ctx, t.Dir)
+		e = kind.run(ctx)
 	}
 	return
 }
@@ -155,7 +153,7 @@ func (t *TaskSet) runtask(ctx Context, key interface{}) (e error) {
 // run the taskCmd, before run, it does:
 // Locate tc.name under runtime GetFilePath(), if found, it's script file, else it's script string
 // If script have function @routine, append routine name
-func (tc *taskCmd) run(ctx Context, dir string) error {
+func (tc *taskCmd) run(ctx Context) error {
 
 	var r io.Reader
 	routine := tc.routine
@@ -195,9 +193,7 @@ func (tc *taskCmd) run(ctx Context, dir string) error {
 	} else {
 		command.Cmd.Stdin = r
 	}
-	if dir != "" {
-		command.Cmd.Dir = dir
-	}
+	_, command.Cmd.Dir = ctx.Dir()
 
 	return command.Run(ctx, tc.routine)
 }

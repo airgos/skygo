@@ -13,7 +13,7 @@ import (
 	"skygo/utils/log"
 )
 
-func cleanall(ctx runbook.Context, dir string) error {
+func cleanall(ctx runbook.Context) error {
 
 	wd := ctx.GetStr("WORKDIR")
 
@@ -22,7 +22,7 @@ func cleanall(ctx runbook.Context, dir string) error {
 	return nil
 }
 
-func printenv(ctx runbook.Context, dir string) error {
+func printenv(ctx runbook.Context) error {
 
 	fmt.Println()
 	ctx.Range(func(k, v string) {
@@ -31,7 +31,7 @@ func printenv(ctx runbook.Context, dir string) error {
 	return nil
 }
 
-func cleanstate(ctx runbook.Context, dir string) error {
+func cleanstate(ctx runbook.Context) error {
 
 	c := ctx.Private().(carton.Builder)
 	cleanstate1(c, "", ctx.GetStr("T"))

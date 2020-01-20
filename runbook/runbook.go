@@ -40,6 +40,14 @@ type Context interface {
 	// give file path for locating general file, e.g. patch file
 	FilesPath() []string
 
+	// retrieves SRC dir and build dir from context
+	// build dir is combination of SRC dir and env B when B is relative path
+	// if no B, SRC dir is the same as build dir
+	//
+	// B should be configured at carton level regardless of native attribute
+	// e.g. wget.Set("B", "build")
+	Dir() (srcDir, buildDir string)
+
 	// retrieves parent standard context
 	Ctx() context.Context
 
@@ -227,13 +235,6 @@ func (rb *Runbook) runTaskForce(ctx Context, name string) error {
 		return err
 	}
 
-	// if taskset's dir is empty, try to use S
-	if tf.taskset.Dir == "" {
-		if dir := ctx.Get("S"); dir != nil {
-			tf.taskset.Dir = dir.(string)
-		}
-	}
-
 	// TaskForce only have one task
 	if err := tf.taskset.runtask(ctx, 0); err != nil {
 		return err
@@ -335,12 +336,6 @@ func (s *Stage) InsertBefore(name string) *Stage {
 // Summary sets help message
 func (s *Stage) Summary(summary string) *Stage {
 	s.help = summary
-	return s
-}
-
-// Dir specifies the working directory of the stage explicitly
-func (s *Stage) Dir(dir string) *Stage {
-	s.taskset.Dir = dir
 	return s
 }
 
@@ -458,13 +453,6 @@ func (s *Stage) play(ctx Context) error {
 
 		if handled, err := s.rangeIn(ctx, s.name); handled || err != nil {
 			return err
-		}
-
-		// if taskset's dir is empty, try to use S
-		if s.taskset.Dir == "" {
-			if dir := ctx.Get("S"); dir != nil {
-				s.taskset.Dir = dir.(string)
-			}
 		}
 
 		if err := s.taskset.play(ctx); err != nil {

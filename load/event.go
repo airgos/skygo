@@ -93,12 +93,10 @@ func tryToSetVarS(ctx runbook.Context, stage string, x interface{}) error {
 		return nil
 	}
 
-	// TODO: remove Private
-	c := ctx.Private().(carton.Builder)
-	if dir := c.SrcDir(ctx.GetStr("WORKDIR")); dir == "" {
+	if s, _ := ctx.Dir(); s == "" {
 		return fmt.Errorf("Failed to find SrcDir automatically! Please set it explicitily by SetSrcDir.")
 	} else {
-		ctx.Set("S", dir)
+		ctx.Set("S", s)
 	}
 	return nil
 }

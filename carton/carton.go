@@ -75,7 +75,7 @@ func NewCarton(name string, m func(c *Carton)) {
 		rb.PushFront(SYSROOT).Summary("Prepares sysroot to build carton")
 
 		fetch := rb.PushBack(FETCH).Summary("Fetchs the source code and extract")
-		fetch.AddTask(0, func(ctx runbook.Context, dir string) error {
+		fetch.AddTask(0, func(ctx runbook.Context) error {
 			return c.fetch.Download(ctx,
 				// reset subsequent stages
 				func(ctx runbook.Context) {
@@ -91,7 +91,7 @@ func NewCarton(name string, m func(c *Carton)) {
 			InsertAfter(BUILD).Summary("Compiles the source in the compilation directory").
 			InsertAfter(INSTALL).Summary("Installs files from the compilation directory").
 			InsertAfter(PACKAGE).Summary("Packages files from the installation directory").
-			AddTask(0, func(ctx runbook.Context, dir string) error {
+			AddTask(0, func(ctx runbook.Context) error {
 				return c.Package(ctx.GetStr("D"), ctx.GetStr("PKGD"))
 			})
 

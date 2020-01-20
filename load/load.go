@@ -190,14 +190,14 @@ func (l *Load) setupRunbook(c carton.Builder) {
 	rb := c.Runbook()
 
 	if s := rb.Stage(carton.PATCH); s != nil {
-		s.AddTask(0, func(ctx runbook.Context, dir string) error {
-			return patch(ctx, dir)
+		s.AddTask(0, func(ctx runbook.Context) error {
+			return patch(ctx)
 		})
 	}
 
 	if s := rb.Stage(carton.SYSROOT); s != nil {
-		s.AddTask(0, func(ctx runbook.Context, dir string) error {
-			return prepare_sysroot(ctx, dir)
+		s.AddTask(0, func(ctx runbook.Context) error {
+			return prepare_sysroot(ctx)
 		})
 	}
 
