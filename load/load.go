@@ -169,6 +169,7 @@ func (l *Load) perform(c carton.Builder, target string,
 	defer cancel()
 
 	ctx := newContext(l, c, isNative)
+	ctx.mkdir()
 	if err = c.Runbook().Play(ctx, target); err != nil {
 		l.once.Do(func() {
 			l.err = loadError{

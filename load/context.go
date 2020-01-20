@@ -33,14 +33,6 @@ func newContext(load *Load, carton carton.Builder,
 	}
 
 	workDir := WorkDir(carton, isNative)
-	tempDir := filepath.Join(workDir, "temp")
-	destDir := filepath.Join(workDir, "image")   // install destination directory
-	pkgDir := filepath.Join(workDir, "packages") // points to directory for files to be packaged
-
-	os.MkdirAll(workDir, 0755)
-	os.MkdirAll(tempDir, 0755)
-	os.MkdirAll(destDir, 0755)
-	os.MkdirAll(pkgDir, 0755)
 
 	// key-value for each carton's context
 	ctx.kv.Init2("context", map[string]interface{}{
@@ -48,9 +40,9 @@ func newContext(load *Load, carton carton.Builder,
 		"ISNATIVE": isNative,
 
 		"PN":   carton.Provider(), // PN: provider name
-		"T":    tempDir,
-		"D":    destDir,
-		"PKGD": pkgDir,
+		"T":    filepath.Join(workDir, "temp"),
+		"D":    filepath.Join(workDir, "image"),    // install destination directory
+		"PKGD": filepath.Join(workDir, "packages"), // points to directory for files to be packaged
 
 		"TARGETARCH":   getTargetArch(carton, isNative),
 		"TARGETOS":     getTargetOS(carton, isNative),
@@ -61,6 +53,14 @@ func newContext(load *Load, carton carton.Builder,
 		ctx.kv.Set("S", dir)
 	}
 	return ctx
+}
+
+func (ctx *_context) mkdir() {
+
+	os.MkdirAll(ctx.kv.GetStr("WORKDIR"), 0755)
+	os.MkdirAll(ctx.kv.GetStr("T"), 0755)
+	os.MkdirAll(ctx.kv.GetStr("D"), 0755)
+	os.MkdirAll(ctx.kv.GetStr("PKGD"), 0755)
 }
 
 func (ctx *_context) Ctx() context.Context {
