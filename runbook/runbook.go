@@ -388,9 +388,6 @@ func (s *Stage) AddDep(d string) *Stage {
 	return s
 }
 
-// Waiter is the interface to wait one dependent stage belong to another runbook finished
-type Waiter interface {
-	Wait(runbook, stage string, isNative bool) <-chan struct{}
 }
 
 func index(isNative bool) int {

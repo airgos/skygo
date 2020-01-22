@@ -248,7 +248,7 @@ func index(isNative bool) int {
 	return index
 }
 
-func (l *Load) Wait(runbook, stage string, isNative bool) <-chan struct{} {
+func (l *Load) wait(runbook, stage string, isNative bool) <-chan struct{} {
 
 	if _, ok := l.loaded[index(isNative)].Load(runbook); ok {
 		done := make(chan struct{})
@@ -280,7 +280,7 @@ func (l *Load) run(c carton.Builder, isNative bool) {
 	wait := func(deps []string) {
 		for _, carton := range deps {
 
-			<-l.Wait(carton, "", isNative)
+			<-l.wait(carton, "", isNative)
 		}
 	}
 
@@ -306,7 +306,7 @@ func (l *Load) start(c carton.Builder, target string, nodeps, isNative bool) {
 	wait := func(deps []string) {
 		for _, carton := range deps {
 
-			<-l.Wait(carton, "", isNative)
+			<-l.wait(carton, "", isNative)
 		}
 	}
 

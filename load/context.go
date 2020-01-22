@@ -76,7 +76,7 @@ func (ctx *_context) FilesPath() []string {
 }
 
 func (ctx *_context) Wait(runbook, stage string, isNative bool) <-chan struct{} {
-	return ctx.load.Wait(runbook, stage, isNative)
+	return ctx.load.wait(runbook, stage, isNative)
 }
 
 func (ctx *_context) Private() interface{} {
