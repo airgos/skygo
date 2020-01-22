@@ -177,6 +177,8 @@ func (l *Load) perform(c carton.Builder, target string,
 				buf:    ctx.errBuf(),
 				err:    err,
 			}
+
+			l.cancel()
 		})
 		return &l.err
 	}
@@ -295,7 +297,6 @@ func (l *Load) run(c carton.Builder, isNative bool) {
 	wait(c.Depends())
 
 	if err := l.perform(c, "", isNative); err != nil {
-		l.cancel()
 		return
 	}
 
@@ -326,7 +327,6 @@ func (l *Load) start(c carton.Builder, target string, nodeps, isNative bool) {
 		}
 
 		if err := l.perform(c, target, isNative); err != nil {
-			l.cancel()
 			return
 		}
 
