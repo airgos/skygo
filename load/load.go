@@ -248,7 +248,8 @@ func index(isNative bool) int {
 	return index
 }
 
-func (l *Load) wait(runbook, stage string, isNative bool) <-chan struct{} {
+func (l *Load) wait(runbook, stage string, isNative bool,
+	notifier func(runbook.Context)) <-chan struct{} {
 
 	if _, ok := l.loaded[index(isNative)].Load(runbook); ok {
 		done := make(chan struct{})
@@ -272,7 +273,13 @@ func (l *Load) wait(runbook, stage string, isNative bool) <-chan struct{} {
 	if stage == "" {
 		stage = "package"
 	}
-	return c.Runbook().Stage(stage).Wait(isNative)
+	sp := c.Runbook().Stage(stage)
+	if notifier != nil {
+		sp.RegisterNotifier(notifier)
+	}
+
+	// TODO: newContext here ctx := newContext(l, c, isNative)
+	return sp.Wait(nil, isNative)
 }
 
 func (l *Load) run(c carton.Builder, isNative bool) {
@@ -280,7 +287,7 @@ func (l *Load) run(c carton.Builder, isNative bool) {
 	wait := func(deps []string) {
 		for _, carton := range deps {
 
-			<-l.wait(carton, "", isNative)
+			<-l.wait(carton, "", isNative, nil)
 		}
 	}
 
@@ -306,7 +313,7 @@ func (l *Load) start(c carton.Builder, target string, nodeps, isNative bool) {
 	wait := func(deps []string) {
 		for _, carton := range deps {
 
-			<-l.wait(carton, "", isNative)
+			<-l.wait(carton, "", isNative, nil)
 		}
 	}
 

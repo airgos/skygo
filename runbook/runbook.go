@@ -52,7 +52,9 @@ type Context interface {
 	Ctx() context.Context
 
 	// Wait waits one dependent stage belong to another runbook finished
-	Wait(runbook, stage string, isNative bool) <-chan struct{}
+	// upon stage struct is got, Wait has to call stage's method RegisterNotifier to add notifier
+	// if notifier is not nil
+	Wait(runbook, stage string, isNative bool, notifier func(Context)) <-chan struct{}
 
 	// private data
 	Private() interface{}
@@ -81,6 +83,11 @@ type Runbook struct {
 	taskForce map[string]*TaskForce
 }
 
+type stageDep struct {
+	runbook  string //format: runbookName[@stageName]
+	notifier func(Context)
+}
+
 // Stage is member of Runbook, and hold a set of tasks with differnt weight.
 // task with the lowest weight is executed first.
 type Stage struct {
@@ -96,8 +103,10 @@ type Stage struct {
 	executed [2]uint32 // executed ?
 	disabled bool
 
-	depends []string // dep format: runbookName[@stageName]
-	ready   [2]chan struct{}
+	depends  []stageDep
+	notifier list.List
+
+	ready [2]chan struct{}
 
 	// inherits event listeners
 	listeners
@@ -214,6 +223,7 @@ func (rb *Runbook) runTaskForce(ctx Context, name string) error {
 	isNative := ctx.Get("ISNATIVE").(bool)
 
 	tf := rb.taskForce[name]
+
 	// wait its dependent stages belong to another rubooks are finished
 	for _, d := range tf.depends {
 
@@ -223,10 +233,11 @@ func (rb *Runbook) runTaskForce(ctx Context, name string) error {
 			runbook = d[:i]
 			stage = d[i+1:]
 		}
+
 		select {
 		case <-ctx.Ctx().Done():
 			return ctx.Ctx().Err()
-		case <-ctx.Wait(runbook, stage, isNative):
+		case <-ctx.Wait(runbook, stage, isNative, nil):
 		}
 	}
 
@@ -378,16 +389,41 @@ func (s *Stage) Reset(ctx Context) {
 	atomic.StoreUint32(&s.executed[index(isNative)], 0)
 }
 
-// AddDep add one dependent stage who are belong to another runbooks to current
-// stage.  dep format: runbookName[@stageName]
-func (s *Stage) AddDep(d string) *Stage {
+// AddDep add one dependent stage who are belong to another runbooks to current stage.
+// format of parameter @d: runbookName[@stageName]
+func (s *Stage) AddDep(d string, notifier func(Context)) *Stage {
 	s.m.Lock()
 	defer s.m.Unlock()
 
-	s.depends = append(s.depends, d)
+	s.depends = append(s.depends, stageDep{
+		runbook:  d,
+		notifier: notifier,
+	})
 	return s
 }
 
+// RegisterNotifier push one notifier callback to notifier chain
+// notifier chain is iterated after stage is executed
+func (s *Stage) RegisterNotifier(n func(Context)) *Stage {
+
+	s.m.Lock()
+	defer s.m.Unlock()
+	s.notifier.PushBack(n)
+	return s
+}
+
+// iterating nofitifier chain and delete items
+func (s *Stage) callNotifierChain(ctx Context) {
+
+	if ctx == nil {
+		return
+	}
+
+	for e := s.notifier.Front(); e != nil; e = e.Next() {
+		n := e.Value.(func(Context))
+		n(ctx)
+		s.notifier.Remove(e)
+	}
 }
 
 func index(isNative bool) int {
@@ -400,10 +436,13 @@ func index(isNative bool) int {
 }
 
 // Wait return channel for waiting this stage is finished
-func (s *Stage) Wait(isNative bool) <-chan struct{} {
+func (s *Stage) Wait(ctx Context, isNative bool) <-chan struct{} {
 
 	ch := s.ready[index(isNative)]
+
+	// TODO: add conditiion if stage had been played
 	if s.disabled || 0 == s.taskset.Len() {
+		s.callNotifierChain(ctx)
 		close(ch)
 	}
 
@@ -422,7 +461,10 @@ func (s *Stage) play(ctx Context) error {
 
 	s.m.Lock()
 	defer s.m.Unlock()
-	defer close(s.ready[index(isNative)])
+	defer func() {
+		s.callNotifierChain(ctx)
+		close(s.ready[index(isNative)])
+	}()
 
 	if s.disabled {
 		return nil
@@ -431,16 +473,16 @@ func (s *Stage) play(ctx Context) error {
 	// wait its dependent stages belong to another rubooks are finished
 	for _, d := range s.depends {
 
-		runbook := d
+		runbook := d.runbook
 		stage := ""
-		if i := strings.LastIndex(d, "@"); i >= 0 {
-			runbook = d[:i]
-			stage = d[i+1:]
+		if i := strings.LastIndex(runbook, "@"); i >= 0 {
+			runbook = d.runbook[:i]
+			stage = d.runbook[i+1:]
 		}
 		select {
 		case <-ctx.Ctx().Done():
 			return ctx.Ctx().Err()
-		case <-ctx.Wait(runbook, stage, isNative):
+		case <-ctx.Wait(runbook, stage, isNative, d.notifier):
 		}
 	}
 
