@@ -5,6 +5,9 @@
 package runbook
 
 import (
+	"fmt"
+	"strings"
+
 	"skygo/utils/log"
 )
 
@@ -75,4 +78,16 @@ func (kv *KV) Range(f func(key, value string)) {
 			f(key, v)
 		}
 	}
+}
+
+func (kv *KV) String() string {
+
+	var b strings.Builder
+
+	for key, value := range kv.vars {
+		fmt.Fprintf(&b, "%12s: \t%v\n", key, value)
+
+	}
+
+	return b.String()
 }
