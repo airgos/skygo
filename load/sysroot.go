@@ -42,7 +42,7 @@ func walk(c carton.Builder, isNative bool, tree map[string]cartonRequired) {
 // it does not care value of dir
 func prepare_sysroot(ctx runbook.Context) error {
 
-	carton := ctx.Private().(carton.Builder)
+	carton := getCartonFromCtx(ctx)
 	isNative := ctx.Get("ISNATIVE").(bool)
 
 	dest := filepath.Join(ctx.GetStr("WORKDIR"), "sysroot")

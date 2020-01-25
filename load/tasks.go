@@ -33,8 +33,7 @@ func printenv(ctx runbook.Context) error {
 
 func cleanstate(ctx runbook.Context) error {
 
-	c := ctx.Private().(carton.Builder)
-	cleanstate1(c, "", ctx.GetStr("T"))
+	cleanstate1(getCartonFromCtx(ctx), "", ctx.GetStr("T"))
 	return nil
 }
 

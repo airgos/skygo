@@ -24,6 +24,11 @@ type _context struct {
 	pool   *pool
 }
 
+func getCartonFromCtx(ctx runbook.Context) carton.Builder {
+
+	return ctx.(*_context).carton
+}
+
 func newContext(load *Load, carton carton.Builder,
 	isNative bool) *_context {
 
@@ -78,10 +83,6 @@ func (ctx *_context) FilesPath() []string {
 func (ctx *_context) Wait(upper runbook.Context, runbook, stage string,
 	notifier func(runbook.Context)) <-chan struct{} {
 	return ctx.load.wait(runbook, stage, upper.Get("ISNATIVE").(bool), notifier)
-}
-
-func (ctx *_context) Private() interface{} {
-	return ctx.carton
 }
 
 func (ctx *_context) Output() (stdout, stderr io.Writer) {
