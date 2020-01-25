@@ -58,9 +58,6 @@ type Context interface {
 	// 2. upon stage is executed by Stage's Play
 	Wait(ctx Context, runbook, stage string, notifier func(Context)) <-chan struct{}
 
-	// private data
-	Private() interface{}
-
 	// acquire permission to run
 	Acquire() error
 
