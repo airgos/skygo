@@ -46,12 +46,7 @@ type Load struct {
 	refcount
 	loaded [2]sync.Map
 
-	loadCh chan *cartonMeta
-}
-
-type cartonMeta struct {
-	carton   carton.Builder
-	isNative bool
+	ctxChan chan *_context
 }
 
 type pool struct {
@@ -91,7 +86,7 @@ func NewLoad(ctx context.Context, name string, loaders int) (*Load, int) {
 	load := Load{
 		pools:   make([]*pool, loaders),
 		loaders: loaders,
-		loadCh:  make(chan *cartonMeta),
+		ctxChan: make(chan *_context),
 		kv:      kv,
 	}
 
@@ -132,7 +127,7 @@ func NewLoad(ctx context.Context, name string, loaders int) (*Load, int) {
 	}
 	load.cancel = func() {
 		cancel()
-		close(load.loadCh)
+		close(load.ctxChan)
 	}
 
 	sigs := make(chan os.Signal, 1)
@@ -161,14 +156,13 @@ func (l *Load) SetOutput(index int, stdout, stderr io.Writer) *Load {
 	return l
 }
 
-func (l *Load) perform(c carton.Builder, target string,
-	isNative bool) (err error) {
+func (l *Load) perform(ctx *_context, target string) (err error) {
 
 	timeout := l.kv.Get("TIMEOUT").(int)
 	_, cancel := context.WithTimeout(l.ctx, time.Duration(timeout)*time.Second)
 	defer cancel()
 
-	ctx := newContext(l, c, isNative)
+	c := ctx.carton
 	ctx.mkdir()
 	if err = c.Runbook().Play(ctx, target); err != nil {
 		l.once.Do(func() {
@@ -267,10 +261,9 @@ func (l *Load) wait(runbook, stage string, isNative bool,
 	}
 
 	l.refGet()
-	l.loadCh <- &cartonMeta{
-		carton:   c,
-		isNative: isNative,
-	}
+
+	ctx := newContext(l, c, isNative)
+	l.ctxChan <- ctx
 
 	if stage == "" {
 		stage = "package"
@@ -280,11 +273,12 @@ func (l *Load) wait(runbook, stage string, isNative bool,
 		sp.RegisterNotifier(notifier)
 	}
 
-	// TODO: newContext here ctx := newContext(l, c, isNative)
-	return sp.Wait(nil, isNative)
+	return sp.Wait(ctx, isNative)
 }
 
-func (l *Load) run(c carton.Builder, isNative bool) {
+func (l *Load) run(ctx *_context) {
+
+	isNative := ctx.kv.Get("ISNATIVE").(bool)
 
 	wait := func(deps []string) {
 		for _, carton := range deps {
@@ -293,15 +287,16 @@ func (l *Load) run(c carton.Builder, isNative bool) {
 		}
 	}
 
+	c := ctx.carton
 	wait(c.BuildDepends())
 	wait(c.Depends())
 
-	if err := l.perform(c, "", isNative); err != nil {
+	if err := l.perform(ctx, ""); err != nil {
 		return
 	}
 
 	l.loaded[index(isNative)].LoadOrStore(c.Provider(), struct{}{})
-	l.refPut(func() { close(l.loadCh) })
+	l.refPut(func() { close(l.ctxChan) })
 }
 
 func (l *Load) start(c carton.Builder, target string, nodeps, isNative bool) {
@@ -326,12 +321,13 @@ func (l *Load) start(c carton.Builder, target string, nodeps, isNative bool) {
 			wait(c.Depends())
 		}
 
-		if err := l.perform(c, target, isNative); err != nil {
+		ctx := newContext(l, c, isNative)
+		if err := l.perform(ctx, target); err != nil {
 			return
 		}
 
 		l.loaded[index(isNative)].LoadOrStore(c.Provider(), struct{}{})
-		l.refPut(func() { close(l.loadCh) })
+		l.refPut(func() { close(l.ctxChan) })
 	}()
 }
 
@@ -352,8 +348,8 @@ func (l *Load) Run(carton, target string, nodeps, force bool) error {
 	l.start(c, target, nodeps, isNative)
 
 	// run & wait done
-	for meta := range l.loadCh {
-		go l.run(meta.carton, meta.isNative)
+	for ctx := range l.ctxChan {
+		go l.run(ctx)
 	}
 
 	if l.err.err != nil {
