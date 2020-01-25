@@ -402,9 +402,9 @@ func (s *Stage) AddDep(d string, notifier func(Context)) *Stage {
 	return s
 }
 
-// RegisterNotifier push one notifier callback to notifier chain
+// registerNotifier push one notifier callback to notifier chain
 // notifier chain is iterated after stage is executed
-func (s *Stage) RegisterNotifier(n func(Context)) *Stage {
+func (s *Stage) registerNotifier(n func(Context)) *Stage {
 
 	s.m.Lock()
 	defer s.m.Unlock()
@@ -436,7 +436,11 @@ func index(isNative bool) int {
 }
 
 // Wait return channel for waiting this stage is finished
-func (s *Stage) Wait(ctx Context, isNative bool) <-chan struct{} {
+func (s *Stage) Wait(ctx Context, notifier func(Context), isNative bool) <-chan struct{} {
+
+	if notifier != nil {
+		s.registerNotifier(notifier)
+	}
 
 	ch := s.ready[index(isNative)]
 

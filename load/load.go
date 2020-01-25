@@ -269,11 +269,7 @@ func (l *Load) wait(runbook, stage string, isNative bool,
 		stage = "package"
 	}
 	sp := c.Runbook().Stage(stage)
-	if notifier != nil {
-		sp.RegisterNotifier(notifier)
-	}
-
-	return sp.Wait(ctx, isNative)
+	return sp.Wait(ctx, notifier, isNative)
 }
 
 func (l *Load) run(ctx *_context) {
