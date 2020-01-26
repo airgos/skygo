@@ -27,7 +27,7 @@ func (i *info) Run(ctx context.Context, args ...string) error {
 		return commandLineErrorf("carton name must be supplied")
 	}
 
-	l, _ := load.NewLoad(ctx, i.name, 1)
+	l, _ := load.NewLoad(ctx, i.name)
 	c, virtual, isNative, err := l.Find(args[0])
 	if err != nil {
 		return err

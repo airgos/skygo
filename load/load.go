@@ -13,7 +13,6 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"sync"
 	"syscall"
@@ -75,14 +74,13 @@ func (l *loadError) Error() string {
 // NewLoad create load to build carton
 // loaders represent how many loader work. if its value is 0, it will use default value
 // Such as BUILDIR can be changed by Settings().Set(key, value) before invoking NewLoad
-func NewLoad(ctx context.Context, name string, loaders int) (*Load, int) {
-
-	if loaders == 0 {
-		loaders = 2 * runtime.NumCPU()
-	}
-	log.Trace("MaxLoaders is set to %d\n", loaders)
+func NewLoad(ctx context.Context, name string) (*Load, int) {
 
 	kv := Settings()
+
+	loaders := kv.Get(MAXLOADERS).(int)
+	log.Trace("MaxLoaders is set to %d\n", loaders)
+
 	load := Load{
 		pools:   make([]*pool, loaders),
 		loaders: loaders,

@@ -58,9 +58,10 @@ func (b *build) Run(ctx context.Context, args ...string) error {
 				b.Loaders = numPanes
 			}
 		}
+		load.Settings().Set(load.MAXLOADERS, b.Loaders)
 	}
 
-	l, loaders := load.NewLoad(ctx, b.name, b.Loaders)
+	l, loaders := load.NewLoad(ctx, b.name)
 	if numPanes > 0 {
 		for i := 0; i < b.Loaders; i++ {
 			pane := panes[i]

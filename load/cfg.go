@@ -36,6 +36,8 @@ const (
 	TARGETARCH   = "TARGETARCH"
 	TARGETOS     = "TARGETOS"
 	TARGETVENDOR = "TARGETVENDOR"
+
+	MAXLOADERS = "MAXLOADERS" // the number of loader
 )
 
 var defaultVars = map[string]interface{}{
@@ -48,6 +50,8 @@ var defaultVars = map[string]interface{}{
 	MACHINEVENDOR: "",
 
 	"TIMEOUT": 1800, // unit is second, default is 30min
+
+	MAXLOADERS: 2 * runtime.NumCPU(),
 }
 
 var settings *runbook.KV
