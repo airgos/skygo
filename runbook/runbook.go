@@ -12,7 +12,6 @@ import (
 	"io"
 	"strings"
 	"sync"
-	"sync/atomic"
 
 	"skygo/utils/log"
 )
@@ -50,6 +49,9 @@ type Context interface {
 
 	// retrieves parent standard context
 	Ctx() context.Context
+
+	// check whether this stage identified by @name had been played
+	Staged(name string) bool
 
 	// Wait waits one dependent stage belong to another runbook finished
 	// Wait should call Stage.Wait to add notifier to chain and wait stage done
@@ -98,14 +100,12 @@ type Stage struct {
 	e       *list.Element
 	runbook *Runbook
 
-	m        sync.Mutex
-	executed [2]uint32 // executed ?
+	m sync.Mutex
+
 	disabled bool
 
 	depends  []stageDep
 	notifier list.List
-
-	ready [2]chan struct{}
 
 	// inherits event listeners
 	listeners
@@ -294,12 +294,11 @@ func newStage(name string) *Stage {
 		taskset: newTaskSet(),
 	}
 
-	stage.ready[0] = make(chan struct{})
-	stage.ready[1] = make(chan struct{})
-
 	// init event listeners
 	stage.listeners.inout.Init()
 	stage.listeners.reset.Init()
+
+	stage.notifier.Init()
 
 	stage.taskset.owner = name
 	return &stage
@@ -381,9 +380,6 @@ func (s *Stage) Reset(ctx Context) {
 
 	s.m.Lock()
 	defer s.m.Unlock()
-
-	isNative := ctx.Get("ISNATIVE").(bool)
-	atomic.StoreUint32(&s.executed[index(isNative)], 0)
 }
 
 // AddDep add one dependent stage who are belong to another runbooks to current stage.
@@ -405,7 +401,7 @@ func (s *Stage) registerNotifier(n func(Context)) *Stage {
 
 	s.m.Lock()
 	defer s.m.Unlock()
-	s.notifier.PushBack(n)
+	s.notifier.PushFront(n)
 	return s
 }
 
@@ -423,15 +419,6 @@ func (s *Stage) callNotifierChain(ctx Context) {
 	}
 }
 
-func index(isNative bool) int {
-
-	index := 0
-	if isNative {
-		index = 1
-	}
-	return index
-}
-
 // Wait return channel for waiting this stage is finished
 // nofier will be invoked when
 // 1. stage had been executed. and iterats notifier chain here
@@ -442,13 +429,23 @@ func (s *Stage) Wait(ctx Context, notifier func(Context)) <-chan struct{} {
 		s.registerNotifier(notifier)
 	}
 
-	isNative := ctx.Get("ISNATIVE").(bool)
-	ch := s.ready[index(isNative)]
+	s.m.Lock()
+	defer s.m.Unlock()
 
-	// TODO: add conditiion if stage had been played
-	if s.disabled || 0 == s.taskset.Len() {
+	ch := make(chan struct{})
+
+	staged := ctx.Staged(s.name)
+	if staged || s.disabled || 0 == s.taskset.Len() {
 		s.callNotifierChain(ctx)
 		close(ch)
+	}
+
+	if !staged {
+
+		// push cleanup function to the end of notifier chain
+		s.notifier.PushBack(func(ctx Context) {
+			close(ch)
+		})
 	}
 
 	return ch
@@ -457,21 +454,13 @@ func (s *Stage) Wait(ctx Context, notifier func(Context)) <-chan struct{} {
 // Play perform tasks in the stage
 func (s *Stage) play(ctx Context) error {
 
-	isNative := ctx.Get("ISNATIVE").(bool)
-	executed := &s.executed[index(isNative)]
-
-	if atomic.LoadUint32(executed) == 1 {
-		return nil
-	}
-
 	s.m.Lock()
 	defer s.m.Unlock()
 	defer func() {
 		s.callNotifierChain(ctx)
-		close(s.ready[index(isNative)])
 	}()
 
-	if s.disabled {
+	if ctx.Staged(s.name) || s.disabled {
 		return nil
 	}
 
@@ -491,18 +480,12 @@ func (s *Stage) play(ctx Context) error {
 		}
 	}
 
-	if *executed == 0 {
-
-		defer atomic.StoreUint32(executed, 1)
-
-		if handled, err := s.rangeIn(ctx, s.name); handled || err != nil {
-			return err
-		}
-
-		if err := s.taskset.play(ctx); err != nil {
-			return err
-		}
-		return s.rangeOut(ctx, s.name)
+	if handled, err := s.rangeIn(ctx, s.name); handled || err != nil {
+		return err
 	}
-	return nil
+
+	if err := s.taskset.play(ctx); err != nil {
+		return err
+	}
+	return s.rangeOut(ctx, s.name)
 }
