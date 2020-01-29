@@ -154,7 +154,7 @@ func (l *Load) SetOutput(index int, stdout, stderr io.Writer) *Load {
 	return l
 }
 
-func (l *Load) perform(ctx *_context, target string) (err error) {
+func (l *Load) perform(ctx *_context, target string) {
 
 	timeout := l.kv.Get("TIMEOUT").(int)
 	_, cancel := context.WithTimeout(l.ctx, time.Duration(timeout)*time.Second)
@@ -163,7 +163,7 @@ func (l *Load) perform(ctx *_context, target string) (err error) {
 	c := ctx.carton
 	carton := ctx.carton.Provider()
 	ctx.mkdir()
-	if err = c.Runbook().Play(ctx, target); err != nil {
+	if err := c.Runbook().Play(ctx, target); err != nil {
 		l.once.Do(func() {
 			l.err = loadError{
 				carton: carton,
@@ -173,13 +173,11 @@ func (l *Load) perform(ctx *_context, target string) (err error) {
 
 			l.cancel()
 		})
-		return &l.err
+		return
 	}
 
 	l.refPut(func() { close(l.ctxChan) })
 	log.Info("Carton %s is built successfully!", carton)
-
-	return nil
 }
 
 func (l *Load) setupRunbook(c carton.Builder) {
@@ -219,6 +217,7 @@ func (l *Load) find(name string) (c carton.Builder, isVirtual bool,
 				err:    err,
 			}
 			err = &l.err
+			l.cancel()
 		})
 		return
 	}
@@ -285,12 +284,20 @@ func (l *Load) run(ctx *_context) {
 	wait(c.BuildDepends())
 	wait(c.Depends())
 
-	if err := l.perform(ctx, ""); err != nil {
-		return
-	}
+	l.perform(ctx, "")
 }
 
-func (l *Load) start(c carton.Builder, target string, nodeps, isNative bool) {
+func (l *Load) start(carton, target string, nodeps, force bool) {
+
+	c, _, isNative, err := l.find(carton)
+	if err != nil {
+		return
+	}
+
+	if force {
+		t := tempDir(c, isNative)
+		cleanstate1(c, target, t)
+	}
 
 	rb := c.Runbook()
 	if rb.HasTaskForce(target) {
@@ -305,42 +312,37 @@ func (l *Load) start(c carton.Builder, target string, nodeps, isNative bool) {
 	}
 
 	l.refGet()
-	go func() {
 
-		if !nodeps {
-			wait(c.BuildDepends())
-			wait(c.Depends())
-		}
+	if !nodeps {
+		wait(c.BuildDepends())
+		wait(c.Depends())
+	}
 
-		state, ok := l.loadOrStoreRunbook(c.Provider(), isNative)
-		if !ok {
-			ctx := newContext(l, c, isNative)
-			state.setCtx(ctx)
-		}
+	state, ok := l.loadOrStoreRunbook(c.Provider(), isNative)
+	if !ok {
+		ctx := newContext(l, c, isNative)
+		state.setCtx(ctx)
+	}
 
-		ctx := state.getCtx()
-		if err := l.perform(ctx, target); err != nil {
-			return
-		}
-
-	}()
+	ctx := state.getCtx()
+	l.perform(ctx, target)
 }
 
-func (l *Load) Run(carton, target string, nodeps, force bool) error {
+func (l *Load) Run(nodeps, force bool, cartons ...string) error {
 
 	defer l.exit()
 
-	c, _, isNative, err := l.find(carton)
-	if err != nil {
-		return err
-	}
+	for _, v := range cartons {
 
-	if force {
-		t := tempDir(c, isNative)
-		cleanstate1(c, target, t)
-	}
+		carton := v
+		target := ""
+		if i := strings.LastIndex(v, "@"); i >= 0 {
+			carton = v[:i]
+			target = v[i+1:]
+		}
 
-	l.start(c, target, nodeps, isNative)
+		go l.start(carton, target, nodeps, force)
+	}
 
 	// run & wait done
 	for ctx := range l.ctxChan {

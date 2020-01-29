@@ -9,7 +9,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"strings"
 
 	"skygo/load"
 	"skygo/utils/log"
@@ -24,7 +23,7 @@ type build struct {
 }
 
 func (*build) Name() string    { return "carton" }
-func (*build) Summary() string { return "build carton" }
+func (*build) Summary() string { return "build cartons" }
 func (b *build) UsageLine() string {
 	return fmt.Sprintf(`<carton name[@target]>
 
@@ -77,11 +76,5 @@ func (b *build) Run(ctx context.Context, args ...string) error {
 		}
 	}
 
-	carton := args[0]
-	target := ""
-	if i := strings.LastIndex(args[0], "@"); i >= 0 {
-		carton = args[0][:i]
-		target = args[0][i+1:]
-	}
-	return l.Run(carton, target, b.NoDeps, b.Force)
+	return l.Run(b.NoDeps, b.Force, args...)
 }
