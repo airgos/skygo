@@ -57,6 +57,8 @@ func logfileEnter(ctx runbook.Context, stage string) (bool, interface{}, error) 
 func stageSetDone(ctx runbook.Context, stage string, x interface{}) error {
 
 	markStagePlayed(ctx.Owner(), stage, ctx.GetStr("T"), true)
+	load := getLoadFromCtx(ctx)
+	load.markStageDone(ctx.Owner(), stage, ctx.Get("ISNATIVE").(bool))
 	return nil
 }
 

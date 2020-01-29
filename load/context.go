@@ -29,6 +29,11 @@ func getCartonFromCtx(ctx runbook.Context) carton.Builder {
 	return ctx.(*_context).carton
 }
 
+func getLoadFromCtx(ctx runbook.Context) *Load {
+
+	return ctx.(*_context).load
+}
+
 func newContext(load *Load, carton carton.Builder,
 	isNative bool) *_context {
 
@@ -178,4 +183,20 @@ func (ctx *_context) Dir() (string, string) {
 		}
 	}
 	return src, build
+}
+
+func (ctx *_context) Staged(name string) bool {
+
+	runbook := ctx.carton.Provider()
+
+	if ok := ctx.load.isStageLoaded(runbook, name,
+		ctx.Get("ISNATIVE").(bool)); ok {
+		return true
+	}
+
+	if isStagePlayed(runbook, name, ctx.GetStr("T")) {
+		return true
+	}
+
+	return false
 }
