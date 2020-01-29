@@ -412,9 +412,13 @@ func (s *Stage) callNotifierChain(ctx Context) {
 		return
 	}
 
-	for e := s.notifier.Front(); e != nil; e = e.Next() {
+	// delete node during iterating
+	var next *list.Element
+	for e := s.notifier.Front(); e != nil; e = next {
 		n := e.Value.(func(Context))
 		n(ctx)
+
+		next = e.Next()
 		s.notifier.Remove(e)
 	}
 }
