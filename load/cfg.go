@@ -38,6 +38,7 @@ const (
 	TARGETVENDOR = "TARGETVENDOR"
 
 	MAXLOADERS = "MAXLOADERS" // the number of loader
+	TIMEOUT    = "TIMEOUT"    // default timeout for each stage
 )
 
 var defaultVars = map[string]interface{}{
@@ -49,8 +50,7 @@ var defaultVars = map[string]interface{}{
 	MACHINEARCH:   "",
 	MACHINEVENDOR: "",
 
-	"TIMEOUT": 1800, // unit is second, default is 30min
-
+	TIMEOUT:    600, // unit is second, default is 10min
 	MAXLOADERS: 2 * runtime.NumCPU(),
 }
 

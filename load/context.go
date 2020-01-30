@@ -122,6 +122,7 @@ func (ctx *_context) GetStr(key string) string {
 	return ""
 }
 
+// retrieves value from context instance first, carton, then golbal settings
 func (ctx *_context) Get(key string) interface{} {
 	if v := ctx.kv.Get(key); v != nil {
 		return v
@@ -199,4 +200,12 @@ func (ctx *_context) Staged(name string) bool {
 	}
 
 	return false
+}
+
+// retrieves timeout from carton firstly then golbal settings
+func (ctx *_context) Timeout() int {
+	if t := ctx.carton.Get("TIMEOUT"); t != nil {
+		return t.(int)
+	}
+	return ctx.load.kv.Get("TIMEOUT").(int)
 }

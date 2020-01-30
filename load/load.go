@@ -16,7 +16,6 @@ import (
 	"strings"
 	"sync"
 	"syscall"
-	"time"
 
 	"skygo/carton"
 	"skygo/runbook"
@@ -155,10 +154,6 @@ func (l *Load) SetOutput(index int, stdout, stderr io.Writer) *Load {
 }
 
 func (l *Load) perform(ctx *_context, target string) {
-
-	timeout := l.kv.Get("TIMEOUT").(int)
-	_, cancel := context.WithTimeout(l.ctx, time.Duration(timeout)*time.Second)
-	defer cancel()
 
 	c := ctx.carton
 	carton := ctx.carton.Provider()
