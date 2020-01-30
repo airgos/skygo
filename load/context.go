@@ -42,7 +42,7 @@ func newContext(load *Load, carton carton.Builder,
 		carton: carton,
 	}
 
-	workDir := WorkDir(carton, isNative)
+	workDir := workDir(carton, isNative)
 
 	// key-value for each carton's context
 	ctx.kv.Init2("context", map[string]interface{}{

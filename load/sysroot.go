@@ -52,7 +52,7 @@ func prepare_sysroot(ctx runbook.Context) error {
 
 		d := d
 		g.Go(func() error {
-			wd := WorkDir(d.c, d.isNative)
+			wd := workDir(d.c, d.isNative)
 			sysroot := dest
 			n := d.c.Provider()
 			if d.isNative {

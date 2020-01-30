@@ -13,9 +13,9 @@ import (
 	"skygo/utils/log"
 )
 
-// WorkDir calculates WORKDIR for carton
+// workDir calculates WORKDIR for carton
 // one carton has different WORKDIR for different arch
-func WorkDir(c carton.Builder, isNative bool) string {
+func workDir(c carton.Builder, isNative bool) string {
 	dir := getTargetArch(c, isNative)
 
 	if vendor := getTargetVendor(c, isNative); vendor != "" {
@@ -70,7 +70,7 @@ func getTargetVendor(c carton.Builder, isNative bool) string {
 
 // value of var S
 func tempDir(c carton.Builder, isNative bool) string {
-	wd := WorkDir(c, isNative)
+	wd := workDir(c, isNative)
 	return filepath.Join(wd, "temp")
 }
 
