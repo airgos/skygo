@@ -293,10 +293,13 @@ func (l *Load) run(ctx *_context) {
 	}
 
 	c := ctx.carton
-	wait(c.BuildDepends())
-	wait(c.Depends())
+	if nodeps := ctx.kv.Get("nodeps"); nodeps == nil {
 
-	l.perform(ctx, "")
+		wait(c.BuildDepends())
+		wait(c.Depends())
+	}
+
+	l.perform(ctx, ctx.kv.GetStr("target"))
 }
 
 func (l *Load) start(carton, target string, nodeps, force bool) {
@@ -316,28 +319,19 @@ func (l *Load) start(carton, target string, nodeps, force bool) {
 		nodeps = true
 	}
 
-	wait := func(deps []string) {
-		for _, carton := range deps {
-
-			<-l.wait(carton, "", isNative, nil)
-		}
-	}
-
-	l.refGet()
-
-	if !nodeps {
-		wait(c.BuildDepends())
-		wait(c.Depends())
-	}
-
 	state, ok := l.loadOrStoreRunbook(c.Provider(), isNative)
 	if !ok {
 		ctx := newContext(l, c, isNative)
 		state.setCtx(ctx)
-	}
 
-	ctx := state.getCtx()
-	l.perform(ctx, target)
+		if nodeps {
+			ctx.Set("nodeps", true)
+		}
+		ctx.Set("target", target)
+
+		l.refGet()
+		l.ctxChan <- ctx
+	}
 }
 
 func (l *Load) Run(nodeps, force bool, cartons ...string) error {
