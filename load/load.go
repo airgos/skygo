@@ -231,10 +231,19 @@ func (l *Load) find(name string) (c carton.Builder, isVirtual bool,
 	return
 }
 
-func (l *Load) Find(name string) (c carton.Builder, isVirtual bool,
-	isNative bool, err error) {
-	l.exit()
-	return l.find(name)
+func (l *Load) Info(carton string,
+	info func(runbook.Context, carton.Builder, bool)) error {
+
+	defer l.exit()
+
+	c, virtual, native, err := l.find(carton)
+	if err != nil {
+		return &l.err
+	}
+
+	ctx := newContext(l, c, native)
+	info(ctx, c, virtual)
+	return nil
 }
 
 func (l *Load) wait(runbook, stage string, isNative bool,

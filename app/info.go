@@ -11,6 +11,7 @@ import (
 
 	"skygo/carton"
 	"skygo/load"
+	"skygo/runbook"
 )
 
 type info struct {
@@ -28,20 +29,17 @@ func (i *info) Run(ctx context.Context, args ...string) error {
 	}
 
 	l, _ := load.NewLoad(ctx, i.name)
-	c, virtual, isNative, err := l.Find(args[0])
-	if err != nil {
-		return err
-	}
+	return l.Info(args[0], func(ctx runbook.Context, carton carton.Builder, virtual bool) {
 
-	if virtual {
-		fmt.Printf("%s --> %s\n\n", args[0], c.Provider())
-	}
-	show(c, isNative)
+		if virtual {
+			fmt.Printf("%s --> %s\n\n", args[0], carton.Provider())
+		}
+		show(ctx, carton)
 
-	return nil
+	})
 }
 
-func show(c carton.Builder, isNative bool) {
+func show(ctx runbook.Context, c carton.Builder) {
 
 	// TODO:
 	// indicates whether it is installed
@@ -83,7 +81,7 @@ func show(c carton.Builder, isNative bool) {
 	}
 
 	fmt.Println("==> Path")
-	wd := load.WorkDir(c, isNative)
+	wd := ctx.GetStr("WORKDIR")
 	fmt.Println("  WORKDIR:", wd)
 	fmt.Println("   SRCDIR:", c.SrcDir(wd))
 
