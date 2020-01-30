@@ -166,6 +166,7 @@ func (l *Load) perform(ctx *_context, target string) {
 	c := ctx.carton
 	carton := ctx.carton.Provider()
 	ctx.mkdir()
+
 	if err := c.Runbook().Play(ctx, target); err != nil {
 		l.once.Do(func() {
 			l.err = loadError{
@@ -183,6 +184,7 @@ func (l *Load) perform(ctx *_context, target string) {
 	log.Info("Carton %s is built successfully!", carton)
 }
 
+// shared for native and cross type
 func (l *Load) setupRunbook(c carton.Builder) {
 
 	rb := c.Runbook()
@@ -230,7 +232,13 @@ func (l *Load) find(name string) (c carton.Builder, isVirtual bool,
 	if isVirtual {
 		t, _, _, _ = carton.Find(c.Provider())
 	}
-	l.setupRunbook(t)
+
+	name = t.Provider()
+	if !l.isRunbookLoaded(name) {
+
+		log.Trace("Setup runbook for %s", name)
+		l.setupRunbook(t)
+	}
 	return
 }
 

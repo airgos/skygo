@@ -38,6 +38,14 @@ func (this *states) loadOrStoreRunbook(name string, isNative bool) (*state, bool
 	return s.(*state), ok
 }
 
+// returns true if runbook is loaded in either native or cross type
+func (this *states) isRunbookLoaded(runbook string) bool {
+
+	_, native := this.runbooks[index(true)].Load(runbook)
+	_, cross := this.runbooks[index(false)].Load(runbook)
+	return native || cross
+}
+
 // check where the stage @name owned by runbook is loaded
 func (this *states) isStageLoaded(runbook, stage string, isNative bool) bool {
 
