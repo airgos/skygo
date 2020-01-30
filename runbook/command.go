@@ -5,7 +5,6 @@
 package runbook
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -16,8 +15,7 @@ import (
 
 // Command represents command of runbook
 type Command struct {
-	Cmd    *exec.Cmd
-	ctxErr error
+	Cmd *exec.Cmd
 }
 
 // NewCommand new exec.Cmd wrapper Command
@@ -55,9 +53,9 @@ func (c *Command) Run(ctx Context, stage string) error {
 				//own child, this should kill the child along with all of its
 				//children on any *Nix systems.
 				syscall.Kill(-c.Cmd.Process.Pid, syscall.SIGKILL)
-				c.ctxErr = ctx.Ctx().Err()
+				err := ctx.Ctx().Err()
 				log.Trace("Runbook: kill child processes started by %s@%s since %v",
-					ctx.Owner(), stage, c.ctxErr)
+					ctx.Owner(), stage, err)
 			}
 		case <-waitDone:
 		}
@@ -67,20 +65,7 @@ func (c *Command) Run(ctx Context, stage string) error {
 		return err
 	}
 
-	err := c.Cmd.Wait()
-	if c.ctxErr != nil {
-		switch c.ctxErr {
-		case context.DeadlineExceeded:
-			timeout := ctx.Get("TIMEOUT")
-			return fmt.Errorf("Runbook expire on %s@%s over %d seconds",
-				ctx.Owner(), stage, timeout)
-		default:
-			return fmt.Errorf("Runbook failed on %s@%s since %s",
-				ctx.Owner(), stage, c.ctxErr)
-		}
-	}
-
-	if err != nil {
+	if err := c.Cmd.Wait(); err != nil {
 		return fmt.Errorf("Runbook failed on %s@%s since %s",
 			ctx.Owner(), stage, err)
 	}

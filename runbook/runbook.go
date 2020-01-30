@@ -12,6 +12,7 @@ import (
 	"io"
 	"strings"
 	"sync"
+	"time"
 
 	"skygo/utils/log"
 )
@@ -47,8 +48,11 @@ type Context interface {
 	// e.g. wget.Set("B", "build")
 	Dir() (srcDir, buildDir string)
 
-	// retrieves parent standard context
+	// retrieves standard context.Context
 	Ctx() context.Context
+
+	// retrieves timeout for stage, unit is second
+	Timeout() int
 
 	// check whether this stage identified by @name had been played
 	Staged(name string) bool
@@ -253,6 +257,7 @@ func (rb *Runbook) runTaskForce(ctx Context, name string) error {
 // Play run task force or iterates stages until stage @target
 // if @target is emptry, it will iterates all stages
 func (rb *Runbook) Play(ctx Context, target string) error {
+	var err error
 
 	if rb.HasTaskForce(target) {
 		return rb.runTaskForce(ctx, target)
@@ -267,15 +272,40 @@ func (rb *Runbook) Play(ctx Context, target string) error {
 
 		if num := stage.taskset.Len(); num > 0 {
 
-			if err := ctx.Acquire(); err != nil {
+			if err = ctx.Acquire(); err != nil {
 				return err
 			}
+
 			log.Trace("Play stage %s[tasks=%d] held by %s",
 				target, num, ctx.Owner())
 
-			err := stage.play(ctx)
-			if err != nil {
-				return err
+			timeout := ctx.Timeout()
+			stdCtx, cancel := context.WithTimeout(ctx.Ctx(), time.Duration(timeout)*time.Second)
+			defer cancel()
+
+			waitDone := make(chan struct{})
+			go func() {
+
+				err = stage.play(ctx)
+				close(waitDone)
+			}()
+
+			select {
+			case <-stdCtx.Done():
+
+				select {
+				case <-waitDone: // stage finished successfully
+				default:
+					if stdCtx.Err() == context.DeadlineExceeded {
+
+						return fmt.Errorf("Runbook expire on %s@%s over %d seconds",
+							ctx.Owner(), stage.name, timeout)
+					}
+				}
+			case <-waitDone:
+				if err != nil {
+					return err
+				}
 			}
 
 			ctx.Release()
