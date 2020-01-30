@@ -43,6 +43,7 @@ type Load struct {
 
 	refcount
 	ctxChan chan *_context
+	closed  sync.Once
 
 	states // inherits state
 }
@@ -116,15 +117,15 @@ func NewLoad(ctx context.Context, name string) (*Load, int) {
 		return &x
 	})
 
-	ctx, cancel := context.WithCancel(ctx)
+	ctx, cancelCtx := context.WithCancel(ctx)
 	load.ctx = ctx
 	load.exit = func() {
 		os.Remove(lockfile)
 		log.Trace("Delete lock file %s", lockfile)
 	}
 	load.cancel = func() {
-		cancel()
-		close(load.ctxChan)
+		cancelCtx()
+		load.closeCtxChan()
 	}
 
 	sigs := make(chan os.Signal, 1)
@@ -138,6 +139,13 @@ func NewLoad(ctx context.Context, name string) (*Load, int) {
 	os.MkdirAll(kv.GetStr(DLDIR), 0755)
 	os.MkdirAll(kv.GetStr(IMAGEDIR), 0755)
 	return &load, loaders
+}
+
+func (l *Load) closeCtxChan() {
+	l.closed.Do(func() {
+		close(l.ctxChan)
+	})
+
 }
 
 // SetOutput assign stdout & stderr for one load
@@ -171,7 +179,7 @@ func (l *Load) perform(ctx *_context, target string) {
 		return
 	}
 
-	l.refPut(func() { close(l.ctxChan) })
+	l.refPut(func() { l.closeCtxChan() })
 	log.Info("Carton %s is built successfully!", carton)
 }
 
