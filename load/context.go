@@ -100,7 +100,12 @@ func (ctx *_context) Output() (stdout, stderr io.Writer) {
 
 	stdout, stderr = ctx.pool.stdout, ctx.pool.stderr
 
+	if ctx.stage == "" {
+		return
+	}
+
 	s := ctx.load.getStage(ctx.carton.Provider(), ctx.stage, ctx.Get("ISNATIVE").(bool))
+
 	_stdout, _stderr := s.getIO()
 
 	if _stderr != nil {
