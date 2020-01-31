@@ -244,6 +244,11 @@ func (rb *Runbook) runTaskForce(ctx Context, name string) error {
 		return err
 	}
 
+	if err := ctx.Acquire(); err != nil {
+		return err
+	}
+	defer ctx.Release()
+
 	// TaskForce only have one task
 	if err := tf.taskset.runtask(ctx, 0); err != nil {
 		return err
@@ -268,10 +273,6 @@ func (rb *Runbook) Play(ctx Context, target string) error {
 	for stage := rb.Head(); stage != nil; stage = stage.Next() {
 
 		if num := stage.taskset.Len(); num > 0 {
-
-			if err = ctx.Acquire(); err != nil {
-				return err
-			}
 
 			log.Trace("Play stage %s[tasks=%d] held by %s",
 				target, num, ctx.Owner())
@@ -306,7 +307,6 @@ func (rb *Runbook) Play(ctx Context, target string) error {
 				}
 			}
 
-			ctx.Release()
 			if stage.name == target {
 				return nil
 			}
@@ -481,6 +481,11 @@ func (s *Stage) play(ctx Context) error {
 		case <-ctx.Wait(ctx, runbook, stage, d.notifier):
 		}
 	}
+
+	if err := ctx.Acquire(); err != nil {
+		return err
+	}
+	defer ctx.Release()
 
 	if err := s.taskset.play(ctx); err != nil {
 		return err
