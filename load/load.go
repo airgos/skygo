@@ -241,9 +241,11 @@ func (l *Load) find(name string) (c carton.Builder, isVirtual bool,
 
 	name = t.Provider()
 	if !l.isRunbookLoaded(name) {
+		if _, ok := l.loadOrStoreRunbook(name, isNative); !ok {
 
-		log.Trace("Setup runbook for %s", name)
-		l.setupRunbook(t)
+			log.Trace("Setup runbook for %s", name)
+			l.setupRunbook(t)
+		}
 	}
 	return
 }
@@ -275,7 +277,7 @@ func (l *Load) wait(runbook, stage string, isNative bool,
 
 	carton := c.Provider()
 	state, ok := l.loadOrStoreRunbook(carton, isNative)
-	if !ok {
+	if !ok || state.getCtx() == nil {
 
 		ctx := newContext(l, c, isNative)
 		state.setCtx(ctx)
@@ -334,7 +336,7 @@ func (l *Load) start(carton, target string, nodeps, force bool) {
 	}
 
 	state, ok := l.loadOrStoreRunbook(c.Provider(), isNative)
-	if !ok {
+	if !ok || state.getCtx() == nil {
 		ctx := newContext(l, c, isNative)
 		state.setCtx(ctx)
 
