@@ -74,6 +74,15 @@ type Context interface {
 // Notifer define notifier prototype
 type Notifer func(Context, string)
 
+type NotifierKind int
+
+const (
+	ENTER NotifierKind = iota // entrance notifier chain
+	EXIT                      // exit notifier chain
+	RESET                     // reset notifier chain
+	END
+)
+
 // Error used by Runbook
 var (
 	ErrUnknownTaskType = errors.New("Unkown Task Type")
@@ -112,7 +121,7 @@ type Stage struct {
 	disabled bool
 
 	depends  []stageDep
-	notifier list.List
+	notifier [END]list.List
 
 	// inherits event listeners
 	listeners
@@ -332,7 +341,10 @@ func newStage(name string) *Stage {
 	stage.listeners.inout.Init()
 	stage.listeners.reset.Init()
 
-	stage.notifier.Init()
+	// init notifier chain
+	for i := 0; i < int(END); i++ {
+		stage.notifier[i].Init()
+	}
 
 	stage.taskset.owner = name
 	return &stage
@@ -431,29 +443,35 @@ func (s *Stage) AddDep(d string, notifier func(Context, string)) *Stage {
 
 // registerNotifier push one notifier callback to notifier chain
 // notifier chain is iterated after stage is executed
-func (s *Stage) registerNotifier(n Notifer) *Stage {
+func (s *Stage) RegisterNotifier(kind NotifierKind, n Notifer) *Stage {
 
 	s.m.Lock()
 	defer s.m.Unlock()
-	s.notifier.PushFront(n)
+
+	if kind < END {
+		s.notifier[kind].PushFront(n)
+	}
+
 	return s
 }
 
 // iterating nofitifier chain and delete items
-func (s *Stage) callNotifierChain(ctx Context) {
+func (s *Stage) callNotifierChain(ctx Context, kind NotifierKind) {
 
 	if ctx == nil {
 		return
 	}
 
+	notifier := s.notifier[kind]
+
 	// delete node during iterating
 	var next *list.Element
-	for e := s.notifier.Front(); e != nil; e = next {
+	for e := notifier.Front(); e != nil; e = next {
 		n := e.Value.(Notifer)
 		n(ctx, s.name)
 
 		next = e.Next()
-		s.notifier.Remove(e)
+		notifier.Remove(e)
 	}
 }
 
@@ -464,7 +482,7 @@ func (s *Stage) callNotifierChain(ctx Context) {
 func (s *Stage) Wait(ctx Context, notifier Notifer) <-chan struct{} {
 
 	if notifier != nil {
-		s.registerNotifier(notifier)
+		s.RegisterNotifier(EXIT, notifier)
 	}
 
 	s.m.Lock()
@@ -474,14 +492,14 @@ func (s *Stage) Wait(ctx Context, notifier Notifer) <-chan struct{} {
 
 	staged := ctx.Staged(s.name)
 	if staged || s.disabled || 0 == s.taskset.Len() {
-		s.callNotifierChain(ctx)
+		s.callNotifierChain(ctx, EXIT)
 		close(ch)
 	}
 
 	if !staged {
 
 		// push cleanup function to the end of notifier chain
-		s.notifier.PushBack(Notifer(func(ctx Context, name string) {
+		s.notifier[EXIT].PushBack(Notifer(func(ctx Context, name string) {
 			close(ch)
 		}))
 	}
@@ -495,7 +513,7 @@ func (s *Stage) play(ctx Context) error {
 	s.m.Lock()
 	defer s.m.Unlock()
 	defer func() {
-		s.callNotifierChain(ctx)
+		s.callNotifierChain(ctx, EXIT)
 	}()
 
 	if ctx.Staged(s.name) || s.disabled {
