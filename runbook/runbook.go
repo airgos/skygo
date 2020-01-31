@@ -283,6 +283,7 @@ func (rb *Runbook) Play(ctx Context, target string) error {
 			stdCtx, cancel := context.WithTimeout(ctx.Ctx(), time.Duration(timeout)*time.Second)
 			defer cancel()
 
+			stage := stage // https://golang.org/doc/faq#closures_and_goroutines
 			waitDone := make(chan struct{})
 			go func() {
 
