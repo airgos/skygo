@@ -23,7 +23,7 @@ type state struct {
 
 type metaStage struct {
 	done           *int32
-	stdout, stderr io.Writer
+	stdout, stderr io.WriteCloser
 }
 
 func index(isNative bool) int {
@@ -85,11 +85,11 @@ func (this *states) getStage(runbook, stage string, isNative bool) *metaStage {
 	return nil
 }
 
-func (meta *metaStage) setIO(stdout, stderr io.Writer) {
+func (meta *metaStage) setIO(stdout, stderr io.WriteCloser) {
 	meta.stdout, meta.stderr = stdout, stderr
 }
 
-func (meta *metaStage) getIO() (stdout, stderr io.Writer) {
+func (meta *metaStage) getIO() (stdout, stderr io.WriteCloser) {
 	return meta.stdout, meta.stderr
 }
 

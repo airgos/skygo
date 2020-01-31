@@ -214,7 +214,7 @@ func (l *Load) setupRunbook(c carton.Builder) {
 	rb.NewTaskForce("cleanstate", cleanstate,
 		"Clean state cache of all stages, same as flag --force")
 
-	addEventListener(rb)
+	registerNotifier(rb)
 }
 
 func (l *Load) find(name string) (c carton.Builder, isVirtual bool,
