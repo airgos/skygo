@@ -92,7 +92,7 @@ func (ctx *_context) FilesPath() []string {
 }
 
 func (ctx *_context) Wait(upper runbook.Context, runbook, stage string,
-	notifier func(runbook.Context)) <-chan struct{} {
+	notifier runbook.Notifer) <-chan struct{} {
 	return ctx.load.wait(runbook, stage, upper.Get("ISNATIVE").(bool), notifier)
 }
 

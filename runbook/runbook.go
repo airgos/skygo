@@ -62,7 +62,7 @@ type Context interface {
 	// nofier will be invoked when
 	// 1. if stage had been executed, Stage's Wait iterats notifier chain
 	// 2. upon stage is executed by Stage's Play
-	Wait(ctx Context, runbook, stage string, notifier func(Context)) <-chan struct{}
+	Wait(ctx Context, runbook, stage string, notifier Notifer) <-chan struct{}
 
 	// acquire permission to run
 	Acquire() error
@@ -70,6 +70,9 @@ type Context interface {
 	//  release permission
 	Release()
 }
+
+// Notifer define notifier prototype
+type Notifer func(Context, string)
 
 // Error used by Runbook
 var (
@@ -90,7 +93,7 @@ type Runbook struct {
 
 type stageDep struct {
 	runbook  string //format: runbookName[@stageName]
-	notifier func(Context)
+	notifier Notifer
 }
 
 // Stage is member of Runbook, and hold a set of tasks with differnt weight.
@@ -415,20 +418,20 @@ func (s *Stage) Reset(ctx Context) {
 
 // AddDep add one dependent stage who are belong to another runbooks to current stage.
 // format of parameter @d: runbookName[@stageName]
-func (s *Stage) AddDep(d string, notifier func(Context)) *Stage {
+func (s *Stage) AddDep(d string, notifier func(Context, string)) *Stage {
 	s.m.Lock()
 	defer s.m.Unlock()
 
 	s.depends = append(s.depends, stageDep{
 		runbook:  d,
-		notifier: notifier,
+		notifier: Notifer(notifier),
 	})
 	return s
 }
 
 // registerNotifier push one notifier callback to notifier chain
 // notifier chain is iterated after stage is executed
-func (s *Stage) registerNotifier(n func(Context)) *Stage {
+func (s *Stage) registerNotifier(n Notifer) *Stage {
 
 	s.m.Lock()
 	defer s.m.Unlock()
@@ -446,8 +449,8 @@ func (s *Stage) callNotifierChain(ctx Context) {
 	// delete node during iterating
 	var next *list.Element
 	for e := s.notifier.Front(); e != nil; e = next {
-		n := e.Value.(func(Context))
-		n(ctx)
+		n := e.Value.(Notifer)
+		n(ctx, s.name)
 
 		next = e.Next()
 		s.notifier.Remove(e)
@@ -458,7 +461,7 @@ func (s *Stage) callNotifierChain(ctx Context) {
 // nofier will be invoked when
 // 1. stage had been executed. and iterats notifier chain here
 // 2. upon stage is executed by Play
-func (s *Stage) Wait(ctx Context, notifier func(Context)) <-chan struct{} {
+func (s *Stage) Wait(ctx Context, notifier Notifer) <-chan struct{} {
 
 	if notifier != nil {
 		s.registerNotifier(notifier)
@@ -478,9 +481,9 @@ func (s *Stage) Wait(ctx Context, notifier func(Context)) <-chan struct{} {
 	if !staged {
 
 		// push cleanup function to the end of notifier chain
-		s.notifier.PushBack(func(ctx Context) {
+		s.notifier.PushBack(Notifer(func(ctx Context, name string) {
 			close(ch)
-		})
+		}))
 	}
 
 	return ch

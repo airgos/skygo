@@ -266,7 +266,7 @@ func (l *Load) Info(carton string,
 }
 
 func (l *Load) wait(runbook, stage string, isNative bool,
-	notifier func(runbook.Context)) <-chan struct{} {
+	notifier runbook.Notifer) <-chan struct{} {
 
 	c, _, native, _ := l.find(runbook)
 
