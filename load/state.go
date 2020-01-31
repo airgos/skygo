@@ -5,6 +5,7 @@
 package load
 
 import (
+	"io"
 	"sync"
 	"sync/atomic"
 
@@ -17,7 +18,12 @@ type states struct {
 
 type state struct {
 	ctx    *_context
-	stages sync.Map
+	stages sync.Map // store metaStage
+}
+
+type metaStage struct {
+	done           *int32
+	stdout, stderr io.Writer
 }
 
 func index(isNative bool) int {
@@ -49,32 +55,42 @@ func (this *states) isRunbookLoaded(runbook string) bool {
 // check where the stage @name owned by runbook is loaded
 func (this *states) isStageLoaded(runbook, stage string, isNative bool) bool {
 
-	if s, ok := this.runbooks[index(isNative)].Load(runbook); ok {
-
-		state := s.(*state)
-
-		if status, ok := state.stages.Load(stage); ok {
-			if atomic.LoadInt32(status.(*int32)) == 1 {
-				log.Trace("Stage %s had been stored into %s's state", stage, runbook)
-				return true
-			}
+	if meta := this.getStage(runbook, stage, isNative); meta != nil {
+		if atomic.LoadInt32(meta.done) == 1 {
+			log.Trace("Stage %s had been cached into %s's state", stage, runbook)
+			return true
 		}
 	}
 	return false
 }
 
 // storeStage mark stage in the runbook had been played
-func (this *states) storeStage(runbook, stage string, isNative bool) {
+func (this *states) setStageDone(runbook, stage string, isNative bool) {
+
+	if meta := this.getStage(runbook, stage, isNative); meta != nil {
+		atomic.StoreInt32(meta.done, 1)
+		log.Trace("Cache %s's stage %s into state", runbook, stage)
+	}
+}
+
+func (this *states) getStage(runbook, stage string, isNative bool) *metaStage {
 
 	if s, ok := this.runbooks[index(isNative)].Load(runbook); ok {
 
 		state := s.(*state)
-
-		if status, ok := state.stages.Load(stage); ok {
-			atomic.StoreInt32(status.(*int32), 1)
-			log.Trace("Store %s's stage %s into state", runbook, stage)
+		if meta, ok := state.stages.Load(stage); ok {
+			return meta.(*metaStage)
 		}
 	}
+	return nil
+}
+
+func (meta *metaStage) setIO(stdout, stderr io.Writer) {
+	meta.stdout, meta.stderr = stdout, stderr
+}
+
+func (meta *metaStage) getIO() (stdout, stderr io.Writer) {
+	return meta.stdout, meta.stderr
 }
 
 // setCtx initialize state
@@ -83,9 +99,10 @@ func (this *state) setCtx(ctx *_context) {
 	this.ctx = ctx
 	rb := ctx.carton.Runbook()
 	for stage := rb.Head(); stage != nil; stage = stage.Next() {
-		status := new(int32)
-		atomic.StoreInt32(status, 0)
-		this.stages.LoadOrStore(stage.Name(), status)
+		meta := new(metaStage)
+		meta.done = new(int32)
+		atomic.StoreInt32(meta.done, 0)
+		this.stages.LoadOrStore(stage.Name(), meta)
 	}
 }
 

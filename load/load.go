@@ -10,6 +10,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -110,8 +111,10 @@ func NewLoad(ctx context.Context, name string) (*Load, int) {
 
 	load.pool = xsync.NewPool(loaders, func(i int) interface{} {
 		x := pool{
-			buf: new(bytes.Buffer),
+			buf:    new(bytes.Buffer),
+			stdout: ioutil.Discard,
 		}
+		x.stderr = x.buf
 
 		load.pools[i] = &x
 		return &x
@@ -157,7 +160,10 @@ func (l *Load) SetOutput(index int, stdout, stderr io.Writer) *Load {
 	if stderr != nil {
 		l.pools[index].stderr = io.MultiWriter(l.pools[index].buf, stderr)
 	}
-	l.pools[index].stdout = stdout
+
+	if stdout != nil {
+		l.pools[index].stdout = stdout
+	}
 	return l
 }
 
@@ -370,5 +376,5 @@ func (l *Load) Run(nodeps, force bool, cartons ...string) error {
 }
 
 func (l *Load) markStageDone(runbook, stage string, isNative bool) {
-	l.storeStage(runbook, stage, isNative)
+	l.setStageDone(runbook, stage, isNative)
 }

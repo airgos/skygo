@@ -48,8 +48,12 @@ func logfileEnter(ctx runbook.Context, stage string) (bool, interface{}, error) 
 		return false, nil, fmt.Errorf("Failed to create %s", logfile)
 	}
 
-	ctx.Set("STDOUT", file)
-	ctx.Set("STDERR", file)
+	carton := getCartonFromCtx(ctx)
+	load := getLoadFromCtx(ctx)
+	s := load.getStage(carton.Provider(), stage, ctx.Get("ISNATIVE").(bool))
+	s.setIO(file, file)
+
+	setStageToCtx(ctx, stage)
 
 	return false, file, nil
 }

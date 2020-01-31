@@ -22,6 +22,7 @@ type _context struct {
 	carton carton.Builder
 	kv     runbook.KV
 	pool   *pool
+	stage  string // running at which stage
 }
 
 func getCartonFromCtx(ctx runbook.Context) carton.Builder {
@@ -32,6 +33,11 @@ func getCartonFromCtx(ctx runbook.Context) carton.Builder {
 func getLoadFromCtx(ctx runbook.Context) *Load {
 
 	return ctx.(*_context).load
+}
+
+// set which stage is currently running
+func setStageToCtx(ctx runbook.Context, name string) {
+	ctx.(*_context).stage = name
 }
 
 func newContext(load *Load, carton carton.Builder,
@@ -92,18 +98,17 @@ func (ctx *_context) Wait(upper runbook.Context, runbook, stage string,
 
 func (ctx *_context) Output() (stdout, stderr io.Writer) {
 
-	if v := ctx.Get("STDERR"); v != nil {
-		stderr = v.(io.Writer)
-	}
-	if ctx.pool.stderr != nil {
-		stderr = io.MultiWriter(ctx.pool.stderr, stderr)
+	stdout, stderr = ctx.pool.stdout, ctx.pool.stderr
+
+	s := ctx.load.getStage(ctx.carton.Provider(), ctx.stage, ctx.Get("ISNATIVE").(bool))
+	_stdout, _stderr := s.getIO()
+
+	if _stderr != nil {
+		stderr = io.MultiWriter(stderr, _stderr)
 	}
 
-	if v := ctx.Get("STDOUT"); v != nil {
-		stdout = v.(io.Writer)
-	}
-	if ctx.pool.stdout != nil {
-		stdout = io.MultiWriter(ctx.pool.stdout, stdout)
+	if _stdout != nil {
+		stdout = io.MultiWriter(stdout, _stdout)
 	}
 	return
 }
