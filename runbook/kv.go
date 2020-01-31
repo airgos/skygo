@@ -56,7 +56,7 @@ func (kv *KV) GetStr(key string) string {
 func (kv *KV) Get(key string) interface{} {
 	v, ok := kv.vars[key]
 	if !ok {
-		log.Warning("Key %s is not found in %s", key, kv.name)
+		log.Info("Key %s is not found in %s", key, kv.name)
 		return nil
 	}
 	return v
