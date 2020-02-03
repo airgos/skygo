@@ -437,7 +437,9 @@ func (s *Stage) Wait(ctx Context, notifier Notifer) <-chan struct{} {
 
 	staged := ctx.Staged(s.name)
 	if staged || s.disabled || 0 == s.taskset.Len() {
-		s.callNotifierChain(ctx, EXIT, s.name)
+		if err := s.callNotifierChain(ctx, EXIT, s.name); err != nil {
+			log.Error("Failed to iterate %s@%s's notifier chain since %s", ctx.Owner(), s.name, err)
+		}
 		close(ch)
 	}
 
