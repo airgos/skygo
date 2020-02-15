@@ -309,13 +309,13 @@ func (l *Load) run(ctx *_context) {
 	}
 
 	c := ctx.carton
-	if nodeps := ctx.kv.Get("nodeps"); nodeps == nil {
+	if nodeps := ctx.kv.Get("_nodeps"); nodeps == nil {
 
 		wait(c.BuildDepends())
 		wait(c.Depends())
 	}
 
-	l.perform(ctx, ctx.kv.GetStr("target"))
+	l.perform(ctx, ctx.kv.GetStr("_target"))
 }
 
 func (l *Load) start(carton, target string, nodeps, force bool) {
@@ -341,9 +341,9 @@ func (l *Load) start(carton, target string, nodeps, force bool) {
 		state.setCtx(ctx)
 
 		if nodeps {
-			ctx.Set("nodeps", true)
+			ctx.Set("_nodeps", true)
 		}
-		ctx.Set("target", target)
+		ctx.Set("_target", target)
 
 		l.refGet()
 		l.ctxChan <- ctx

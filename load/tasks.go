@@ -26,7 +26,10 @@ func printenv(ctx runbook.Context) error {
 
 	fmt.Println()
 	ctx.Range(func(k, v string) {
-		fmt.Printf("%12s:\t%s\n", k, v)
+		// _* is internal key, ignore it
+		if k[0] != '_' {
+			fmt.Printf("%12s:\t%s\n", k, v)
+		}
 	})
 	return nil
 }
