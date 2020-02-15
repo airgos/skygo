@@ -15,6 +15,7 @@ import (
 
 	"skygo/carton"
 	"skygo/runbook"
+	"skygo/utils"
 )
 
 type _context struct {
@@ -191,6 +192,9 @@ func (ctx *_context) Dir() (string, string) {
 
 		if !filepath.IsAbs(x) {
 			build = filepath.Join(src, x)
+		}
+		if utils.IsExist(src) {
+			os.Mkdir(build, 0755)
 		}
 	}
 	return src, build
