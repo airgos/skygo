@@ -9,9 +9,11 @@ package load
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 
 	"skygo/carton"
 	"skygo/runbook"
@@ -123,11 +125,31 @@ func (ctx *_context) Set(key string, value interface{}) {
 	ctx.kv.Set(key, value)
 }
 
+// it supports to expand ${[^$]*}
 func (ctx *_context) GetStr(key string) string {
 	if v := ctx.Get(key); v != nil {
 		if v, ok := v.(string); ok {
-			return v
+
+			// expand ${[^$]*}
+			m := regexp.MustCompile(`\${[^$]*}`)
+			expand := v
+			for _, matched := range m.FindAllString(v, -1) {
+
+				key := matched[2 : len(matched)-1]
+				if v := ctx.Get(key); v != nil {
+
+					if v, ok := v.(string); ok {
+						expand = m.ReplaceAllString(expand, v)
+					}
+				} else {
+
+					panic(fmt.Sprintf("GetStr failed to expand key %s from context", key))
+				}
+			}
+			return expand
 		}
+
+		return ""
 	}
 
 	return ""
@@ -187,11 +209,10 @@ func (ctx *_context) Dir() (string, string) {
 	src := ctx.carton.SrcDir(ctx.GetStr("WORKDIR"))
 	build := src
 
-	if b := ctx.Get("B"); b != nil {
-		x := b.(string)
+	if b := ctx.GetStr("B"); b != "" {
 
-		if !filepath.IsAbs(x) {
-			build = filepath.Join(src, x)
+		if !filepath.IsAbs(b) {
+			build = filepath.Join(src, b)
 		}
 		if utils.IsExist(src) {
 			os.Mkdir(build, 0755)
